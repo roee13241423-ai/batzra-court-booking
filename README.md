@@ -5,17 +5,19 @@
 ## התקנה מקומית
 
 1. יש להתקין [Node.js](https://nodejs.org) (גרסה 18 ומעלה) - אם עדיין לא מותקן במחשב.
-2. להעתיק את הקובץ `.env.example` לקובץ בשם `.env` ולמלא בו:
+2. ליצור מסד נתונים Postgres חינמי (למשל ב-[Neon](https://neon.tech)) ולהעתיק את כתובת החיבור (Connection String).
+3. להעתיק את הקובץ `.env.example` לקובץ בשם `.env` ולמלא בו:
+   - `DATABASE_URL` - כתובת החיבור למסד הנתונים
    - `SESSION_SECRET` - מחרוזת סודית אקראית
    - `ADMIN_EMAIL` ו-`ADMIN_PASSWORD` - פרטי ההתחברות של המנהל הראשון (ייווצר אוטומטית בהפעלה)
-3. בתוך תיקיית הפרויקט להריץ:
+4. בתוך תיקיית הפרויקט להריץ:
 
 ```bash
 npm install
 npm start
 ```
 
-4. לפתוח דפדפן בכתובת `http://localhost:3000` ולהתחבר עם פרטי המנהל שהוגדרו ב-`.env`.
+5. לפתוח דפדפן בכתובת `http://localhost:3000` ולהתחבר עם פרטי המנהל שהוגדרו ב-`.env`.
 
 ## איך זה עובד
 
@@ -29,12 +31,13 @@ npm start
 2. ב-[Render](https://render.com) ליצור **Web Service** חדש מחובר ל-repo:
    - Build Command: `npm install`
    - Start Command: `npm start`
-3. להגדיר את משתני הסביבה (`SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`) בהגדרות השירות ב-Render (Environment).
-4. **חשוב**: בתוכנית החינמית של Render הדיסק אינו קבוע (נמחק בכל דיפלוי/הפעלה מחדש), כך שקובץ `data/db.json` עלול להימחק מעת לעת. עבור קבוצה קטנה (~30 איש) זה בדרך כלל בסדר להתחלה, אך אם רוצים שהנתונים (משתמשים ושריונים) יישמרו לצמיתות, כדאי בהמשך לשדרג לדיסק קבוע (Persistent Disk, בתשלום) או לעבור למסד נתונים חיצוני חינמי כמו Neon/Supabase (Postgres).
+3. להגדיר את משתני הסביבה (`DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`) בהגדרות השירות ב-Render (Environment).
+
+מכיוון שהנתונים נשמרים במסד Postgres חיצוני (לא בדיסק המקומי של השירות), הם **לא נמחקים** בכל דיפלוי מחדש או הפעלה מחדש של השירות.
 
 ## מבנה הפרויקט
 
 - `server.js` - כל הלוגיקה של השרת (Express)
-- `db.js` - שכבת גישה פשוטה לקובץ JSON (`data/db.json`)
+- `db.js` - שכבת גישה למסד הנתונים (Postgres)
 - `views/` - תבניות EJS לדפי האתר
 - `public/style.css` - עיצוב האתר

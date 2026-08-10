@@ -3,7 +3,7 @@ const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const path = require('path');
-const { readDb, writeDb } = require('./db');
+const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -53,65 +53,49 @@ app.use(session({
   cookie: { maxAge: 1000 * 60 * 60 * 24 * 30 } // 30 days
 }));
 
-// --- seed admin on first run ---
-function seedAdmin() {
-  const db = readDb();
-  const hasAdmin = db.users.some(u => u.isAdmin);
-  if (!hasAdmin && process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
-    const passwordHash = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10);
-    db.users.push({
-      id: db.nextUserId++,
-      firstName: 'מנהל',
-      lastName: 'מערכת',
-      address: '-',
-      email: process.env.ADMIN_EMAIL.toLowerCase(),
-      passwordHash,
-      status: 'approved',
-      isAdmin: true,
-      createdAt: new Date().toISOString()
-    });
-    writeDb(db);
-    console.log(`נוצר משתמש מנהל: ${process.env.ADMIN_EMAIL}`);
-  }
+function asyncRoute(fn) {
+  return (req, res, next) => fn(req, res, next).catch(next);
 }
-seedAdmin();
 
 // --- helpers ---
-function currentUser(req) {
+async function currentUser(req) {
   if (!req.session.userId) return null;
-  const db = readDb();
-  return db.users.find(u => u.id === req.session.userId) || null;
+  return db.getUserById(req.session.userId);
 }
 
-function requireLogin(req, res, next) {
-  const user = currentUser(req);
-  if (!user) return res.redirect('/login');
-  if (user.status !== 'approved') return res.redirect('/pending');
-  req.user = user;
-  next();
+function requireLogin(fn) {
+  return asyncRoute(async (req, res, next) => {
+    const user = await currentUser(req);
+    if (!user) return res.redirect('/login');
+    if (user.status !== 'approved') return res.redirect('/pending');
+    req.user = user;
+    return fn(req, res, next);
+  });
 }
 
-function requireAdmin(req, res, next) {
-  const user = currentUser(req);
-  if (!user) return res.redirect('/login');
-  if (!user.isAdmin) return res.status(403).send('אין הרשאה');
-  req.user = user;
-  next();
+function requireAdmin(fn) {
+  return asyncRoute(async (req, res, next) => {
+    const user = await currentUser(req);
+    if (!user) return res.redirect('/login');
+    if (!user.isAdmin) return res.status(403).send('אין הרשאה');
+    req.user = user;
+    return fn(req, res, next);
+  });
 }
 
 // --- routes ---
-app.get('/', (req, res) => {
-  const user = currentUser(req);
+app.get('/', asyncRoute(async (req, res) => {
+  const user = await currentUser(req);
   if (!user) return res.redirect('/login');
   if (user.status !== 'approved') return res.redirect('/pending');
   res.redirect('/booking');
-});
+}));
 
 app.get('/register', (req, res) => {
   res.render('register', { error: null, form: {} });
 });
 
-app.post('/register', (req, res) => {
+app.post('/register', asyncRoute(async (req, res) => {
   const { firstName, lastName, address, email, password, confirmPassword } = req.body;
   const form = { firstName, lastName, address, email };
 
@@ -125,59 +109,54 @@ app.post('/register', (req, res) => {
     return res.render('register', { error: 'הסיסמאות אינן תואמות', form });
   }
 
-  const db = readDb();
   const emailLower = email.toLowerCase().trim();
-  if (db.users.some(u => u.email === emailLower)) {
+  const existing = await db.getUserByEmail(emailLower);
+  if (existing) {
     return res.render('register', { error: 'כבר קיימת הרשמה עם כתובת מייל זו', form });
   }
 
   const passwordHash = bcrypt.hashSync(password, 10);
-  const newUser = {
-    id: db.nextUserId++,
+  const newUser = await db.createUser({
     firstName: firstName.trim(),
     lastName: lastName.trim(),
     address: address.trim(),
     email: emailLower,
     passwordHash,
     status: 'pending',
-    isAdmin: false,
-    createdAt: new Date().toISOString()
-  };
-  db.users.push(newUser);
-  writeDb(db);
+    isAdmin: false
+  });
 
   req.session.userId = newUser.id;
   res.redirect('/pending');
-});
+}));
 
-app.get('/pending', (req, res) => {
-  const user = currentUser(req);
+app.get('/pending', asyncRoute(async (req, res) => {
+  const user = await currentUser(req);
   if (!user) return res.redirect('/login');
   if (user.status === 'approved') return res.redirect('/booking');
   res.render('pending', { user });
-});
+}));
 
 app.get('/login', (req, res) => {
   res.render('login', { error: null });
 });
 
-app.post('/login', (req, res) => {
+app.post('/login', asyncRoute(async (req, res) => {
   const { email, password } = req.body;
-  const db = readDb();
-  const user = db.users.find(u => u.email === (email || '').toLowerCase().trim());
+  const user = await db.getUserByEmail((email || '').toLowerCase().trim());
   if (!user || !bcrypt.compareSync(password || '', user.passwordHash)) {
     return res.render('login', { error: 'מייל או סיסמה שגויים' });
   }
   req.session.userId = user.id;
   if (user.status !== 'approved') return res.redirect('/pending');
   res.redirect('/booking');
-});
+}));
 
 app.post('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
 
-app.get('/booking', requireLogin, (req, res) => {
+app.get('/booking', requireLogin(async (req, res) => {
   let offset = parseInt(req.query.offset, 10);
   if (isNaN(offset) || offset < 0) offset = 0;
 
@@ -192,14 +171,16 @@ app.get('/booking', requireLogin, (req, res) => {
     });
   }
 
-  const db = readDb();
+  const [bookings, users] = await Promise.all([db.getAllBookings(), db.getAllUsers()]);
+  const usersById = new Map(users.map(u => [u.id, u]));
+
   const grid = {};
   days.forEach(day => {
     grid[day.dateStr] = {};
     HOURS.forEach(hour => {
-      const booking = db.bookings.find(b => b.date === day.dateStr && b.hour === hour);
+      const booking = bookings.find(b => b.date === day.dateStr && b.hour === hour);
       if (booking) {
-        const owner = db.users.find(u => u.id === booking.userId);
+        const owner = usersById.get(booking.userId);
         grid[day.dateStr][hour] = {
           taken: true,
           mine: booking.userId === req.user.id,
@@ -212,9 +193,9 @@ app.get('/booking', requireLogin, (req, res) => {
   });
 
   res.render('booking', { user: req.user, days, hours: HOURS, grid, offset });
-});
+}));
 
-app.post('/booking/:date/:hour', requireLogin, (req, res) => {
+app.post('/booking/:date/:hour', requireLogin(async (req, res) => {
   const { date } = req.params;
   const hour = parseInt(req.params.hour, 10);
   let offset = parseInt(req.query.offset, 10);
@@ -223,47 +204,33 @@ app.post('/booking/:date/:hour', requireLogin, (req, res) => {
   if (!DATE_RE.test(date) || isNaN(hour) || !HOURS.includes(hour) || isSlotPast(date, hour)) {
     return res.status(400).send('משבצת לא תקינה');
   }
-  const db = readDb();
-  const exists = db.bookings.some(b => b.date === date && b.hour === hour);
-  if (!exists) {
-    db.bookings.push({
-      id: db.nextBookingId++,
-      date,
-      hour,
-      userId: req.user.id,
-      createdAt: new Date().toISOString()
-    });
-    writeDb(db);
-  }
+  await db.createBooking(date, hour, req.user.id);
   res.redirect(`/booking?offset=${offset}`);
-});
+}));
 
-app.post('/booking/:date/:hour/cancel', requireLogin, (req, res) => {
+app.post('/booking/:date/:hour/cancel', requireLogin(async (req, res) => {
   const { date } = req.params;
   const hour = parseInt(req.params.hour, 10);
   let offset = parseInt(req.query.offset, 10);
   if (isNaN(offset) || offset < 0) offset = 0;
 
-  const db = readDb();
-  const idx = db.bookings.findIndex(b => b.date === date && b.hour === hour && b.userId === req.user.id);
-  if (idx !== -1) {
-    db.bookings.splice(idx, 1);
-    writeDb(db);
-  }
+  await db.deleteBookingByOwner(date, hour, req.user.id);
   res.redirect(`/booking?offset=${offset}`);
-});
+}));
 
-app.get('/admin', requireAdmin, (req, res) => {
-  const db = readDb();
-  const pending = db.users.filter(u => u.status === 'pending');
-  const approved = db.users.filter(u => u.status === 'approved');
-  const rejected = db.users.filter(u => u.status === 'rejected');
-  const bookings = db.bookings
+app.get('/admin', requireAdmin(async (req, res) => {
+  const [users, bookings] = await Promise.all([db.getAllUsers(), db.getAllBookings()]);
+  const usersById = new Map(users.map(u => [u.id, u]));
+
+  const pending = users.filter(u => u.status === 'pending');
+  const approved = users.filter(u => u.status === 'approved');
+  const rejected = users.filter(u => u.status === 'rejected');
+
+  const upcoming = bookings
     .filter(b => !isSlotPast(b.date, b.hour))
-    .slice()
     .sort((a, b) => a.date === b.date ? a.hour - b.hour : (a.date < b.date ? -1 : 1))
     .map(b => {
-      const owner = db.users.find(u => u.id === b.userId);
+      const owner = usersById.get(b.userId);
       const [y, m, d] = b.date.split('-');
       return {
         ...b,
@@ -272,40 +239,59 @@ app.get('/admin', requireAdmin, (req, res) => {
         dateLabel: `${d}/${m}/${y}`
       };
     });
-  res.render('admin', { user: req.user, pending, approved, rejected, bookings });
-});
 
-app.post('/admin/bookings/:id/delete', requireAdmin, (req, res) => {
-  const db = readDb();
-  const id = parseInt(req.params.id, 10);
-  db.bookings = db.bookings.filter(b => b.id !== id);
-  writeDb(db);
+  res.render('admin', { user: req.user, pending, approved, rejected, bookings: upcoming });
+}));
+
+app.post('/admin/bookings/:id/delete', requireAdmin(async (req, res) => {
+  await db.deleteBookingById(parseInt(req.params.id, 10));
   res.redirect('/admin');
-});
+}));
 
-app.post('/admin/users/:id/approve', requireAdmin, (req, res) => {
-  const db = readDb();
-  const u = db.users.find(u => u.id === parseInt(req.params.id, 10));
-  if (u) { u.status = 'approved'; writeDb(db); }
+app.post('/admin/users/:id/approve', requireAdmin(async (req, res) => {
+  await db.setUserStatus(parseInt(req.params.id, 10), 'approved');
   res.redirect('/admin');
-});
+}));
 
-app.post('/admin/users/:id/reject', requireAdmin, (req, res) => {
-  const db = readDb();
-  const u = db.users.find(u => u.id === parseInt(req.params.id, 10));
-  if (u) { u.status = 'rejected'; writeDb(db); }
+app.post('/admin/users/:id/reject', requireAdmin(async (req, res) => {
+  await db.setUserStatus(parseInt(req.params.id, 10), 'rejected');
   res.redirect('/admin');
-});
+}));
 
-app.post('/admin/users/:id/delete', requireAdmin, (req, res) => {
-  const db = readDb();
-  const id = parseInt(req.params.id, 10);
-  db.users = db.users.filter(u => u.id !== id || u.isAdmin);
-  db.bookings = db.bookings.filter(b => b.userId !== id);
-  writeDb(db);
+app.post('/admin/users/:id/delete', requireAdmin(async (req, res) => {
+  await db.deleteUser(parseInt(req.params.id, 10));
   res.redirect('/admin');
+}));
+
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).send('שגיאת שרת');
 });
 
-app.listen(PORT, () => {
-  console.log(`השרת פועל על פורט ${PORT}`);
+async function start() {
+  await db.init();
+
+  const hasAdmin = await db.hasAdmin();
+  if (!hasAdmin && process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
+    const passwordHash = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 10);
+    await db.createUser({
+      firstName: 'מנהל',
+      lastName: 'מערכת',
+      address: '-',
+      email: process.env.ADMIN_EMAIL.toLowerCase(),
+      passwordHash,
+      status: 'approved',
+      isAdmin: true
+    });
+    console.log(`נוצר משתמש מנהל: ${process.env.ADMIN_EMAIL}`);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`השרת פועל על פורט ${PORT}`);
+  });
+}
+
+start().catch(err => {
+  console.error('כשל באתחול השרת:', err);
+  process.exit(1);
 });
