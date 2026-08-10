@@ -52,25 +52,23 @@ function isSlotPast(dateStr, hour) {
   return slotEnd <= new Date();
 }
 
-// --- weather (Open-Meteo, free, no API key) ---
+// --- weather (OpenWeatherMap - needs OPENWEATHER_API_KEY; Open-Meteo's free
+// keyless tier turned out to be rate-limited at Render's shared outbound IP) ---
 const BATZRA_LAT = 32.32;
 const BATZRA_LON = 34.94;
 const WEATHER_CACHE_MS = 15 * 60 * 1000; // 15 minutes
 const WEATHER_RETRY_AFTER_FAILURE_MS = 5 * 60 * 1000; // don't hammer the API when it's failing
-const RAINY_CODES = new Set([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99]);
+const BAD_WEATHER_MAIN = new Set(['Rain', 'Drizzle', 'Thunderstorm', 'Snow']);
 let weatherCache = { data: null, fetchedAt: 0 };
 
-function describeWeatherCode(code) {
-  if (code === 0) return { emoji: '☀️', label: 'בהיר' };
-  if (code === 1 || code === 2) return { emoji: '🌤️', label: 'בהיר עם עננים בודדים' };
-  if (code === 3) return { emoji: '☁️', label: 'מעונן' };
-  if (code === 45 || code === 48) return { emoji: '🌫️', label: 'ערפילי' };
-  if (RAINY_CODES.has(code)) {
-    if (code >= 95) return { emoji: '⛈️', label: 'סופת רעמים' };
-    if (code >= 71 && code <= 77) return { emoji: '❄️', label: 'שלג' };
-    return { emoji: '🌧️', label: 'גשום' };
-  }
-  return { emoji: '🌡️', label: '' };
+function describeWeatherMain(main) {
+  if (main === 'Clear') return '☀️';
+  if (main === 'Clouds') return '⛅';
+  if (main === 'Rain' || main === 'Drizzle') return '🌧️';
+  if (main === 'Thunderstorm') return '⛈️';
+  if (main === 'Snow') return '❄️';
+  if (main === 'Mist' || main === 'Fog' || main === 'Haze') return '🌫️';
+  return '🌡️';
 }
 
 async function getWeather() {
@@ -81,18 +79,23 @@ async function getWeather() {
   if (!weatherCache.data && weatherCache.fetchedAt && now - weatherCache.fetchedAt < WEATHER_RETRY_AFTER_FAILURE_MS) {
     return null; // failed recently, don't hammer the API again yet
   }
+  if (!process.env.OPENWEATHER_API_KEY) {
+    weatherCache = { data: null, fetchedAt: now };
+    return null;
+  }
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4000);
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${BATZRA_LAT}&longitude=${BATZRA_LON}&current=temperature_2m,weather_code&timezone=Asia%2FJerusalem`;
+    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${BATZRA_LAT}&lon=${BATZRA_LON}&appid=${process.env.OPENWEATHER_API_KEY}&units=metric&lang=he`;
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeout);
     if (!res.ok) throw new Error(`מזג אוויר: תגובה לא תקינה ${res.status}`);
     const json = await res.json();
-    const tempC = Math.round(json.current.temperature_2m);
-    const code = json.current.weather_code;
-    const { emoji, label } = describeWeatherCode(code);
-    const isGoodForPlaying = tempC >= 22 && tempC <= 34 && !RAINY_CODES.has(code);
+    const tempC = Math.round(json.main.temp);
+    const main = json.weather[0].main;
+    const label = json.weather[0].description;
+    const emoji = describeWeatherMain(main);
+    const isGoodForPlaying = tempC >= 22 && tempC <= 34 && !BAD_WEATHER_MAIN.has(main);
     const data = { tempC, emoji, label, isGoodForPlaying };
     weatherCache = { data, fetchedAt: now };
     return data;
