@@ -32,6 +32,8 @@ async function init() {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code TEXT;`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires TIMESTAMPTZ;`);
+  // Admins predate email verification and should never be locked out by it.
+  await pool.query(`UPDATE users SET email_verified = true WHERE is_admin = true AND email_verified = false;`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS bookings (
