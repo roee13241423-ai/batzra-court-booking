@@ -264,23 +264,24 @@ app.post('/logout', (req, res) => {
 });
 
 app.get('/forgot-password', (req, res) => {
-  res.render('forgot-password', { error: null, sent: false });
+  res.render('forgot-password', { error: null, sent: false, notFound: false });
 });
 
 app.post('/forgot-password', asyncRoute(async (req, res) => {
   const email = (req.body.email || '').toLowerCase().trim();
   const user = await db.getUserByEmail(email);
 
-  if (user) {
-    const token = crypto.randomBytes(32).toString('hex');
-    const expires = new Date(Date.now() + RESET_TTL_MS);
-    await db.setResetToken(user.id, token, expires);
-    const resetUrl = `${req.protocol}://${req.get('host')}/reset-password/${token}`;
-    sendResetEmail(user, resetUrl); // fire-and-forget, see /register
+  if (!user) {
+    return res.render('forgot-password', { error: null, sent: false, notFound: true });
   }
 
-  // Same response whether or not the email is registered, so we don't leak who has an account.
-  res.render('forgot-password', { error: null, sent: true });
+  const token = crypto.randomBytes(32).toString('hex');
+  const expires = new Date(Date.now() + RESET_TTL_MS);
+  await db.setResetToken(user.id, token, expires);
+  const resetUrl = `${req.protocol}://${req.get('host')}/reset-password/${token}`;
+  sendResetEmail(user, resetUrl); // fire-and-forget, see /register
+
+  res.render('forgot-password', { error: null, sent: true, notFound: false });
 }));
 
 app.get('/reset-password/:token', asyncRoute(async (req, res) => {
