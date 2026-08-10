@@ -14,7 +14,7 @@ const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמיש
 const HOURS = Array.from({ length: 18 }, (_, i) => i + 6); // 6..23
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const COURTS = [
-  { id: 'footvolley', name: 'פוציוולי' },
+  { id: 'footvolley', name: 'פוצ\'יוולי' },
   { id: 'tennis', name: 'טניס' }
 ];
 const DEFAULT_COURT = 'footvolley';
