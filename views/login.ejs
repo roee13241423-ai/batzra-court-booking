@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>התחברות - מגרש מושב בצרה</title>
   <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
 </head>
 <body>
   <div class="container" style="max-width:420px; margin-top:60px;">
@@ -19,7 +20,15 @@
         <input type="email" id="email" name="email" required>
 
         <label for="password">סיסמה</label>
-        <input type="password" id="password" name="password" required>
+        <div class="password-wrap">
+          <input type="password" id="password" name="password" required>
+          <button type="button" class="toggle-password" data-toggle-password="password" aria-label="הצג סיסמה">👁️</button>
+        </div>
+
+        <div class="checkbox-row">
+          <input type="checkbox" id="rememberMe" name="rememberMe">
+          <label for="rememberMe">זכור אותי</label>
+        </div>
 
         <div style="margin-top:20px;">
           <button class="btn" type="submit">התחברות</button>

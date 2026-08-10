@@ -82,6 +82,14 @@ function asyncRoute(fn) {
   return (req, res, next) => fn(req, res, next).catch(next);
 }
 
+function applyRememberMe(req, remembered) {
+  if (remembered) {
+    req.session.cookie.maxAge = 1000 * 60 * 60 * 24 * 30; // 30 days
+  } else {
+    req.session.cookie.expires = false; // browser-session cookie, cleared on close
+  }
+}
+
 // --- helpers ---
 async function currentUser(req) {
   if (!req.session.userId) return null;
@@ -167,6 +175,7 @@ app.post('/register', asyncRoute(async (req, res) => {
   sendVerificationEmail(newUser, code); // fire-and-forget: mail delivery shouldn't block registration
 
   req.session.userId = newUser.id;
+  applyRememberMe(req, !!req.body.rememberMe);
   res.redirect('/verify-email');
 }));
 
@@ -225,6 +234,7 @@ app.post('/login', asyncRoute(async (req, res) => {
     return res.render('login', { error: 'מייל או סיסמה שגויים' });
   }
   req.session.userId = user.id;
+  applyRememberMe(req, !!req.body.rememberMe);
   res.redirect(postLoginRedirect(user));
 }));
 
