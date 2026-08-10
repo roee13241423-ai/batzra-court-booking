@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ניהול - מגרש מושב בצרה</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>ניהול מערכת</h1>
+    <div class="user-info">
+      <span>שלום, <%= user.firstName %></span>
+      <a href="/booking">ללוח השריונים</a>
+      <form method="POST" action="/logout" style="display:inline;">
+        <button class="btn small secondary" type="submit">יציאה</button>
+      </form>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <div class="card tabs-section">
+      <h3>בקשות הרשמה ממתינות (<%= pending.length %>)</h3>
+      <% if (pending.length === 0) { %>
+        <p class="muted">אין בקשות ממתינות.</p>
+      <% } else { %>
+        <table class="admin-table">
+          <thead>
+            <tr><th>שם</th><th>מייל</th><th>כתובת</th><th>נרשם בתאריך</th><th>פעולות</th></tr>
+          </thead>
+          <tbody>
+            <% pending.forEach(u => { %>
+              <tr>
+                <td><%= u.firstName %> <%= u.lastName %></td>
+                <td><%= u.email %></td>
+                <td><%= u.address %></td>
+                <td><%= new Date(u.createdAt).toLocaleDateString('he-IL') %></td>
+                <td>
+                  <form method="POST" action="/admin/users/<%= u.id %>/approve" style="display:inline;">
+                    <button class="btn small" type="submit">אישור</button>
+                  </form>
+                  <form method="POST" action="/admin/users/<%= u.id %>/reject" style="display:inline;">
+                    <button class="btn small danger" type="submit">דחייה</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+
+    <div class="card tabs-section">
+      <h3>משתמשים מאושרים (<%= approved.length %>)</h3>
+      <table class="admin-table">
+        <thead>
+          <tr><th>שם</th><th>מייל</th><th>כתובת</th><th>מנהל</th><th>פעולות</th></tr>
+        </thead>
+        <tbody>
+          <% approved.forEach(u => { %>
+            <tr>
+              <td><%= u.firstName %> <%= u.lastName %></td>
+              <td><%= u.email %></td>
+              <td><%= u.address %></td>
+              <td><%= u.isAdmin ? 'כן' : '' %></td>
+              <td>
+                <% if (!u.isAdmin) { %>
+                  <form method="POST" action="/admin/users/<%= u.id %>/delete" onsubmit="return confirm('להסיר את המשתמש? כל השריונים שלו יימחקו.');" style="display:inline;">
+                    <button class="btn small danger" type="submit">הסרה</button>
+                  </form>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if (rejected.length > 0) { %>
+    <div class="card tabs-section">
+      <h3>נדחו (<%= rejected.length %>)</h3>
+      <table class="admin-table">
+        <thead><tr><th>שם</th><th>מייל</th><th>פעולות</th></tr></thead>
+        <tbody>
+          <% rejected.forEach(u => { %>
+            <tr>
+              <td><%= u.firstName %> <%= u.lastName %></td>
+              <td><%= u.email %></td>
+              <td>
+                <form method="POST" action="/admin/users/<%= u.id %>/approve" style="display:inline;">
+                  <button class="btn small" type="submit">אישור בכל זאת</button>
+                </form>
+                <form method="POST" action="/admin/users/<%= u.id %>/delete" onsubmit="return confirm('להסיר לצמיתות?');" style="display:inline;">
+                  <button class="btn small danger" type="submit">הסרה</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+
+    <div class="card tabs-section">
+      <h3>שריונים קרובים (<%= bookings.length %>)</h3>
+      <p class="muted">שריונים שכבר עברו אינם מוצגים כאן.</p>
+      <% if (bookings.length === 0) { %>
+        <p class="muted">אין שריונים קרובים.</p>
+      <% } else { %>
+        <table class="admin-table">
+          <thead><tr><th>תאריך</th><th>יום</th><th>שעה</th><th>שריין</th><th>פעולות</th></tr></thead>
+          <tbody>
+            <% bookings.forEach(b => { %>
+              <tr>
+                <td><%= b.dateLabel %></td>
+                <td><%= b.dayName %></td>
+                <td><%= b.hour %>:00</td>
+                <td><%= b.ownerName %></td>
+                <td>
+                  <form method="POST" action="/admin/bookings/<%= b.id %>/delete" style="display:inline;">
+                    <button class="btn small danger" type="submit">ביטול</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+
+  </div>
+</body>
+</html>

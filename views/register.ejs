@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>הרשמה - מגרש מושב בצרה</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container" style="max-width:480px; margin-top:40px;">
+    <div class="card">
+      <h2>הרשמה לשריון המגרש</h2>
+      <p class="muted">מושב בצרה — ההרשמה טעונה אישור מנהל לפני שתוכל לשריין מועדים.</p>
+      <% if (error) { %>
+        <div class="error"><%= error %></div>
+      <% } %>
+      <form class="stack" method="POST" action="/register">
+        <label for="firstName">שם פרטי</label>
+        <input type="text" id="firstName" name="firstName" value="<%= form.firstName || '' %>" required>
+
+        <label for="lastName">שם משפחה</label>
+        <input type="text" id="lastName" name="lastName" value="<%= form.lastName || '' %>" required>
+
+        <label for="address">כתובת מגורים</label>
+        <input type="text" id="address" name="address" value="<%= form.address || '' %>" required>
+
+        <label for="email">כתובת מייל</label>
+        <input type="email" id="email" name="email" value="<%= form.email || '' %>" required>
+
+        <label for="password">סיסמה</label>
+        <input type="password" id="password" name="password" minlength="6" required>
+
+        <label for="confirmPassword">אימות סיסמה</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" minlength="6" required>
+
+        <div style="margin-top:20px;">
+          <button class="btn" type="submit">הרשמה</button>
+        </div>
+      </form>
+      <div class="link-row">
+        כבר נרשמת? <a href="/login">התחברות</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

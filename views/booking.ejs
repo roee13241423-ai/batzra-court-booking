@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>שריון מגרש - מושב בצרה</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>מגרש מושב בצרה</h1>
+    <div class="user-info">
+      <span>שלום, <%= user.firstName %> <%= user.lastName %><% if (user.isAdmin) { %> (מנהל)<% } %></span>
+      <% if (user.isAdmin) { %><a href="/admin">ניהול</a><% } %>
+      <form method="POST" action="/logout" style="display:inline;">
+        <button class="btn small secondary" type="submit">יציאה</button>
+      </form>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>לוח שריונים</h2>
+      <p class="muted">לחצו על משבצת פנויה כדי לשריין אותה לתאריך ולשעה הספציפיים. השריון הוא חד-פעמי בלבד.</p>
+
+      <div class="week-nav">
+        <% if (offset > 0) { %>
+          <a class="btn small secondary" href="/booking?offset=<%= offset - 1 %>">&rarr; שבוע קודם</a>
+        <% } else { %>
+          <span></span>
+        <% } %>
+        <span class="muted"><%= days[0].label %> - <%= days[6].label %></span>
+        <a class="btn small secondary" href="/booking?offset=<%= offset + 1 %>">שבוע הבא &larr;</a>
+      </div>
+
+      <div class="legend">
+        <span><i style="background:var(--free)"></i> פנוי</span>
+        <span><i style="background:var(--mine)"></i> השריון שלי</span>
+        <span><i style="background:var(--taken)"></i> תפוס</span>
+        <span><i style="background:var(--past)"></i> עבר</span>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th>שעה</th>
+              <% days.forEach(day => { %>
+                <th><%= day.dayName %><br><span class="muted"><%= day.label %></span></th>
+              <% }) %>
+            </tr>
+          </thead>
+          <tbody>
+            <% hours.forEach(hour => { %>
+              <tr>
+                <th><%= hour %>:00</th>
+                <% days.forEach(day => {
+                     const cell = grid[day.dateStr][hour];
+                %>
+                  <td>
+                    <% if (cell.taken) { %>
+                      <% if (cell.mine) { %>
+                        <form method="POST" action="/booking/<%= day.dateStr %>/<%= hour %>/cancel?offset=<%= offset %>">
+                          <button type="submit" class="slot mine">שלך (ביטול)</button>
+                        </form>
+                      <% } else { %>
+                        <span class="slot taken">תפוס</span>
+                      <% } %>
+                    <% } else if (cell.isPast) { %>
+                      <span class="slot past">-</span>
+                    <% } else { %>
+                      <form method="POST" action="/booking/<%= day.dateStr %>/<%= hour %>?offset=<%= offset %>">
+                        <button type="submit" class="slot free">פנוי</button>
+                      </form>
+                    <% } %>
+                  </td>
+                <% }) %>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

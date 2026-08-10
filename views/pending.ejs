@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ממתין לאישור - מגרש מושב בצרה</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container" style="max-width:480px; margin-top:60px;">
+    <div class="card">
+      <% if (user.status === 'rejected') { %>
+        <h2>ההרשמה נדחתה</h2>
+        <p class="muted">בקשת ההרשמה שלך נדחתה על ידי המנהל. לפרטים נוספים יש לפנות ישירות למנהל המערכת.</p>
+      <% } else { %>
+        <h2>ממתין לאישור מנהל</h2>
+        <p class="muted">שלום <%= user.firstName %>, ההרשמה שלך התקבלה וממתינה לאישור מנהל המושב. לאחר האישור תוכל להתחבר ולשריין מועדים במגרש.</p>
+      <% } %>
+      <form method="POST" action="/logout" style="margin-top:16px;">
+        <button class="btn secondary" type="submit">יציאה</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
