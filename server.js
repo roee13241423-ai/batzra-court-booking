@@ -66,26 +66,6 @@ async function sendVerificationEmail(user, code) {
   }
 }
 
-async function sendBookingConfirmationEmail(user, dateStr, hour) {
-  try {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const dayName = DAY_NAMES[new Date(y, m - 1, d).getDay()];
-    await mailer.sendMail({
-      to: user.email,
-      subject: 'אישור שריון מגרש - מושב בצרה',
-      html: `
-        <div dir="rtl" style="font-family: Arial, sans-serif;">
-          <p>שלום ${user.firstName},</p>
-          <p>השריון שלך אושר בהצלחה:</p>
-          <p style="font-size: 18px; font-weight: bold;">יום ${dayName}, ${pad(d)}/${pad(m)}/${y} בשעה ${hour}:00</p>
-        </div>
-      `
-    });
-  } catch (err) {
-    console.error('שגיאה בשליחת מייל אישור שריון:', err.message);
-  }
-}
-
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.set('trust proxy', 1);
@@ -300,10 +280,7 @@ app.post('/booking/:date/:hour', requireLogin(async (req, res) => {
   if (!DATE_RE.test(date) || isNaN(hour) || !HOURS.includes(hour) || isSlotPast(date, hour)) {
     return res.status(400).send('משבצת לא תקינה');
   }
-  const booking = await db.createBooking(date, hour, req.user.id);
-  if (booking) {
-    await sendBookingConfirmationEmail(req.user, date, hour);
-  }
+  await db.createBooking(date, hour, req.user.id);
   res.redirect(`/booking?offset=${offset}`);
 }));
 
