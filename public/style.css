@@ -228,6 +228,23 @@ table.grid th:first-child {
 .taken-details .contact-card a:hover { text-decoration: underline; }
 .slot.past { background: var(--past); color: #f1f5f9; cursor: default; }
 
+.quick-hours {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-hours .btn.small { background: var(--free); color: #14532d; font-weight: 600; }
+.quick-hours .btn.small:hover { background: #4ade80; }
+
+details.full-calendar { margin-top: 20px; }
+details.full-calendar summary {
+  list-style: none;
+  width: fit-content;
+}
+details.full-calendar summary::-webkit-details-marker { display: none; }
+details.full-calendar summary::marker { content: ""; }
+
 .week-nav {
   display: flex;
   align-items: center;

@@ -351,7 +351,23 @@ app.get('/booking', requireLogin(async (req, res) => {
     });
   });
 
-  res.render('booking', { user: req.user, days, hours: HOURS, grid, offset });
+  const todayStr = formatDateStr(new Date());
+  let quickDate = null;
+  if (DATE_RE.test(req.query.date || '') && req.query.date >= todayStr) {
+    quickDate = req.query.date;
+  }
+  let quickDateLabel = null;
+  let quickHours = [];
+  if (quickDate) {
+    const [y, m, d] = quickDate.split('-').map(Number);
+    quickDateLabel = `יום ${DAY_NAMES[new Date(y, m - 1, d).getDay()]}, ${pad(d)}/${pad(m)}/${y}`;
+    quickHours = HOURS.filter(hour => {
+      const taken = bookings.some(b => b.date === quickDate && b.hour === hour);
+      return !taken && !isSlotPast(quickDate, hour);
+    });
+  }
+
+  res.render('booking', { user: req.user, days, hours: HOURS, grid, offset, todayStr, quickDate, quickDateLabel, quickHours });
 }));
 
 app.post('/booking/:date/:hour', requireLogin(async (req, res) => {
@@ -364,6 +380,9 @@ app.post('/booking/:date/:hour', requireLogin(async (req, res) => {
     return res.status(400).send('משבצת לא תקינה');
   }
   await db.createBooking(date, hour, req.user.id);
+  if (DATE_RE.test(req.query.date || '')) {
+    return res.redirect(`/booking?date=${req.query.date}`);
+  }
   res.redirect(`/booking?offset=${offset}`);
 }));
 

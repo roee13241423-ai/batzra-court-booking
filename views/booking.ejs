@@ -20,74 +20,108 @@
 
   <div class="container">
     <div class="card">
-      <h2>לוח שריונים</h2>
-      <p class="muted">לחצו על משבצת פנויה כדי לשריין אותה לתאריך ולשעה הספציפיים. השריון הוא חד-פעמי בלבד.</p>
-
-      <div class="week-nav">
-        <% if (offset > 0) { %>
-          <a class="btn small secondary" href="/booking?offset=<%= offset - 1 %>">&rarr; שבוע קודם</a>
+      <h2>שריון מהיר</h2>
+      <% if (!quickDate) { %>
+        <p class="muted">באיזה יום תרצה לשחק?</p>
+        <form class="stack" method="GET" action="/booking">
+          <label for="quickDateInput">תאריך</label>
+          <input type="date" id="quickDateInput" name="date" min="<%= todayStr %>" required>
+          <div style="margin-top:16px;">
+            <button class="btn" type="submit">המשך</button>
+          </div>
+        </form>
+      <% } else { %>
+        <p class="muted">שעות פנויות ל<%= quickDateLabel %>:</p>
+        <% if (quickHours.length === 0) { %>
+          <p class="muted">אין שעות פנויות ביום זה.</p>
         <% } else { %>
-          <span></span>
+          <div class="quick-hours">
+            <% quickHours.forEach(hour => { %>
+              <form method="POST" action="/booking/<%= quickDate %>/<%= hour %>?date=<%= quickDate %>">
+                <button class="btn small" type="submit"><%= hour %>:00</button>
+              </form>
+            <% }) %>
+          </div>
         <% } %>
-        <span class="muted"><%= days[0].label %> - <%= days[6].label %></span>
-        <a class="btn small secondary" href="/booking?offset=<%= offset + 1 %>">שבוע הבא &larr;</a>
-      </div>
+        <div class="link-row">
+          <a href="/booking">בחירת יום אחר</a>
+        </div>
+      <% } %>
+    </div>
 
-      <div class="legend">
-        <span><i style="background:var(--free)"></i> פנוי</span>
-        <span><i style="background:var(--mine)"></i> השריון שלי</span>
-        <span><i style="background:var(--taken)"></i> תפוס</span>
-        <span><i style="background:var(--past)"></i> עבר</span>
-      </div>
+    <details class="full-calendar">
+      <summary class="btn secondary">פתיחת הלוח המלא</summary>
 
-      <div class="table-scroll">
-        <table class="grid">
-          <thead>
-            <tr>
-              <th>שעה</th>
-              <% days.forEach(day => { %>
-                <th><%= day.dayName %><br><span class="muted"><%= day.label %></span></th>
-              <% }) %>
-            </tr>
-          </thead>
-          <tbody>
-            <% hours.forEach(hour => { %>
+      <div class="card" style="margin-top:16px;">
+        <h2>לוח שריונים</h2>
+        <p class="muted">לחצו על משבצת פנויה כדי לשריין אותה לתאריך ולשעה הספציפיים. השריון הוא חד-פעמי בלבד.</p>
+
+        <div class="week-nav">
+          <% if (offset > 0) { %>
+            <a class="btn small secondary" href="/booking?offset=<%= offset - 1 %>">&rarr; שבוע קודם</a>
+          <% } else { %>
+            <span></span>
+          <% } %>
+          <span class="muted"><%= days[0].label %> - <%= days[6].label %></span>
+          <a class="btn small secondary" href="/booking?offset=<%= offset + 1 %>">שבוע הבא &larr;</a>
+        </div>
+
+        <div class="legend">
+          <span><i style="background:var(--free)"></i> פנוי</span>
+          <span><i style="background:var(--mine)"></i> השריון שלי</span>
+          <span><i style="background:var(--taken)"></i> תפוס</span>
+          <span><i style="background:var(--past)"></i> עבר</span>
+        </div>
+
+        <div class="table-scroll">
+          <table class="grid">
+            <thead>
               <tr>
-                <th><%= hour %>:00</th>
-                <% days.forEach(day => {
-                     const cell = grid[day.dateStr][hour];
-                %>
-                  <td>
-                    <% if (cell.taken) { %>
-                      <% if (cell.mine) { %>
-                        <form method="POST" action="/booking/<%= day.dateStr %>/<%= hour %>/cancel?offset=<%= offset %>">
-                          <button type="submit" class="slot mine">שלך (ביטול)</button>
-                        </form>
-                      <% } else { %>
-                        <details class="taken-details" name="taken-contact">
-                          <summary class="slot taken">תפוס<br><small><%= cell.ownerName %></small></summary>
-                          <div class="contact-card">
-                            <strong><%= cell.ownerName %></strong>
-                            <% if (cell.ownerPhone) { %><a href="tel:<%= cell.ownerPhone %>">📞 <%= cell.ownerPhone %></a><% } %>
-                            <% if (cell.ownerEmail) { %><a href="mailto:<%= cell.ownerEmail %>">✉️ <%= cell.ownerEmail %></a><% } %>
-                          </div>
-                        </details>
-                      <% } %>
-                    <% } else if (cell.isPast) { %>
-                      <span class="slot past">-</span>
-                    <% } else { %>
-                      <form method="POST" action="/booking/<%= day.dateStr %>/<%= hour %>?offset=<%= offset %>">
-                        <button type="submit" class="slot free">פנוי</button>
-                      </form>
-                    <% } %>
-                  </td>
+                <th>שעה</th>
+                <% days.forEach(day => { %>
+                  <th><%= day.dayName %><br><span class="muted"><%= day.label %></span></th>
                 <% }) %>
               </tr>
-            <% }) %>
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              <% hours.forEach(hour => { %>
+                <tr>
+                  <th><%= hour %>:00</th>
+                  <% days.forEach(day => {
+                       const cell = grid[day.dateStr][hour];
+                  %>
+                    <td>
+                      <% if (cell.taken) { %>
+                        <% if (cell.mine) { %>
+                          <form method="POST" action="/booking/<%= day.dateStr %>/<%= hour %>/cancel?offset=<%= offset %>">
+                            <button type="submit" class="slot mine">שלך (ביטול)</button>
+                          </form>
+                        <% } else { %>
+                          <details class="taken-details" name="taken-contact">
+                            <summary class="slot taken">תפוס<br><small><%= cell.ownerName %></small></summary>
+                            <div class="contact-card">
+                              <strong><%= cell.ownerName %></strong>
+                              <% if (cell.ownerPhone) { %><a href="tel:<%= cell.ownerPhone %>">📞 <%= cell.ownerPhone %></a><% } %>
+                              <% if (cell.ownerEmail) { %><a href="mailto:<%= cell.ownerEmail %>">✉️ <%= cell.ownerEmail %></a><% } %>
+                            </div>
+                          </details>
+                        <% } %>
+                      <% } else if (cell.isPast) { %>
+                        <span class="slot past">-</span>
+                      <% } else { %>
+                        <form method="POST" action="/booking/<%= day.dateStr %>/<%= hour %>?offset=<%= offset %>">
+                          <button type="submit" class="slot free">פנוי</button>
+                        </form>
+                      <% } %>
+                    </td>
+                  <% }) %>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </details>
   </div>
 </body>
 </html>
