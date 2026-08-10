@@ -178,8 +178,13 @@ async function currentUser(req) {
   return db.getUserById(req.session.userId);
 }
 
+function needsProfileCompletion(user) {
+  return !user.phone || !user.address;
+}
+
 function postLoginRedirect(user) {
   if (!user.emailVerified) return '/verify-email';
+  if (needsProfileCompletion(user)) return '/complete-profile';
   if (user.status !== 'approved') return '/pending';
   return '/booking';
 }
@@ -189,6 +194,7 @@ function requireLogin(fn) {
     const user = await currentUser(req);
     if (!user) return res.redirect('/login');
     if (!user.emailVerified) return res.redirect('/verify-email');
+    if (needsProfileCompletion(user)) return res.redirect('/complete-profile');
     if (user.status !== 'approved') return res.redirect('/pending');
     req.user = user;
     return fn(req, res, next);
@@ -301,8 +307,31 @@ app.get('/pending', asyncRoute(async (req, res) => {
   const user = await currentUser(req);
   if (!user) return res.redirect('/login');
   if (!user.emailVerified) return res.redirect('/verify-email');
+  if (needsProfileCompletion(user)) return res.redirect('/complete-profile');
   if (user.status === 'approved') return res.redirect('/booking');
   res.render('pending', { user });
+}));
+
+app.get('/complete-profile', asyncRoute(async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.redirect('/login');
+  if (!user.emailVerified) return res.redirect('/verify-email');
+  if (!needsProfileCompletion(user)) return res.redirect(postLoginRedirect(user));
+  res.render('complete-profile', { user, error: null });
+}));
+
+app.post('/complete-profile', asyncRoute(async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.redirect('/login');
+  if (!user.emailVerified) return res.redirect('/verify-email');
+
+  const { phone, address } = req.body;
+  if (!phone || !address) {
+    return res.render('complete-profile', { user, error: 'יש למלא טלפון וכתובת' });
+  }
+  await db.updateProfile(user.id, phone.trim(), address.trim());
+  const updatedUser = await db.getUserById(user.id);
+  res.redirect(postLoginRedirect(updatedUser));
 }));
 
 app.get('/login', (req, res) => {
@@ -323,6 +352,85 @@ app.post('/login', asyncRoute(async (req, res) => {
 app.post('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
+
+app.get('/auth/google', (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return res.status(500).send('התחברות עם Google אינה מוגדרת');
+  }
+  const state = crypto.randomBytes(16).toString('hex');
+  req.session.oauthState = state;
+  const redirectUri = `${req.protocol}://${req.get('host')}/auth/google/callback`;
+  const params = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'openid email profile',
+    state,
+    prompt: 'select_account'
+  });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+});
+
+app.get('/auth/google/callback', asyncRoute(async (req, res) => {
+  const { code, state, error } = req.query;
+  const expectedState = req.session.oauthState;
+  delete req.session.oauthState;
+
+  if (error || !code || !state || state !== expectedState) {
+    return res.redirect('/login');
+  }
+
+  const redirectUri = `${req.protocol}://${req.get('host')}/auth/google/callback`;
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code,
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code'
+    })
+  });
+  if (!tokenRes.ok) {
+    console.error('שגיאה בהחלפת קוד Google:', await tokenRes.text());
+    return res.redirect('/login');
+  }
+  const tokenJson = await tokenRes.json();
+
+  const profileRes = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+    headers: { Authorization: `Bearer ${tokenJson.access_token}` }
+  });
+  if (!profileRes.ok) return res.redirect('/login');
+  const profile = await profileRes.json();
+  if (!profile.email) return res.redirect('/login');
+
+  const emailLower = profile.email.toLowerCase().trim();
+  let user = await db.getUserByEmail(emailLower);
+
+  if (!user) {
+    const randomPassword = crypto.randomBytes(24).toString('hex');
+    const passwordHash = bcrypt.hashSync(randomPassword, 10);
+    user = await db.createUser({
+      firstName: profile.given_name || profile.name || 'משתמש',
+      lastName: profile.family_name || '',
+      address: '',
+      phone: '',
+      email: emailLower,
+      passwordHash,
+      status: 'pending',
+      isAdmin: false,
+      emailVerified: !!profile.email_verified
+    });
+  } else if (!user.emailVerified && profile.email_verified) {
+    await db.markEmailVerified(user.id);
+    user = await db.getUserById(user.id);
+  }
+
+  req.session.userId = user.id;
+  applyRememberMe(req, true);
+  res.redirect(postLoginRedirect(user));
+}));
 
 app.get('/forgot-password', (req, res) => {
   res.render('forgot-password', { error: null, sent: false, notFound: false });

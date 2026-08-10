@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>השלמת פרטים - מגרש מושב בצרה</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="container" style="max-width:420px; margin-top:60px;">
+    <div class="card">
+      <h2>עוד רגע לפני שממשיכים</h2>
+      <p class="muted">שלום <%= user.firstName %>, נרשמת דרך Google — נשאר רק למלא כתובת וטלפון כדי שנוכל להמשיך.</p>
+
+      <% if (error) { %>
+        <div class="error"><%= error %></div>
+      <% } %>
+
+      <form class="stack" method="POST" action="/complete-profile">
+        <label for="address">כתובת מגורים</label>
+        <input type="text" id="address" name="address" value="<%= user.address || '' %>" required>
+
+        <label for="phone">מספר טלפון</label>
+        <input type="tel" id="phone" name="phone" value="<%= user.phone || '' %>" placeholder="050-1234567" required>
+
+        <div style="margin-top:20px;">
+          <button class="btn" type="submit">המשך</button>
+        </div>
+      </form>
+
+      <form method="POST" action="/logout" style="margin-top:10px;">
+        <button class="btn secondary small" type="submit">יציאה</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

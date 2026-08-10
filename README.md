@@ -13,6 +13,7 @@
    - `BREVO_API_KEY` ו-`MAIL_FROM_EMAIL` - לשליחת מיילים (קוד אימות) דרך [Brevo](https://brevo.com). אם לא מוגדרים, המערכת עדיין עובדת אך לא שולחת מיילים בפועל (רק מדפיסה הודעה ביומן השרת) - אפשר להשתמש בכפתור "אמת מייל ידנית" בפאנל הניהול במקום.
    - `OPENWEATHER_API_KEY` - להצגת מזג אוויר בכותרת, דרך [OpenWeatherMap](https://openweathermap.org) (חינמי). אם לא מוגדר, פשוט לא מוצג מזג אוויר.
    - `TZ` - יש להגדיר ל-`Asia/Jerusalem` כדי שהשעות בלוח יתאימו לשעון ישראל.
+   - `GOOGLE_CLIENT_ID` ו-`GOOGLE_CLIENT_SECRET` - להתחברות/הרשמה מהירה עם Google (ראו הוראות בקובץ `.env.example`). אם לא מוגדרים, כפתור ה-Google פשוט יציג הודעת שגיאה בלחיצה.
 4. בתוך תיקיית הפרויקט להריץ:
 
 ```bash
@@ -32,6 +33,7 @@ npm start
 - **שני מגרשים** - כרטיסיות בראש עמוד השריון מאפשרות לעבור בין מגרש הפוצ'יוולי (ברירת המחדל) למגרש הטניס; לכל מגרש לוח שריונים נפרד לגמרי.
 - **מגבלה יומית** - עד שעתיים הזמנה ליום לכל משתמש, בכל מגרש בנפרד.
 - **מזג אוויר** - בכותרת מוצג התאריך, שעון חי, ומזג האוויר הנוכחי (דרך [OpenWeatherMap](https://openweathermap.org), חינמי, דורש מפתח API אישי). ביום חם ונעים למשחק מופיעה עיטור שמש מונפש.
+- **התחברות/הרשמה עם Google** - כפתור "המשך עם Google" בעמודי ההתחברות וההרשמה. משתמש חדש שנרשם כך מדלג אוטומטית על שלב אימות המייל (Google כבר אימת אותו), אך עדיין נדרש למלא טלפון וכתובת (עמוד `/complete-profile`) ולעבור אישור מנהל כרגיל לפני שיוכל לשריין.
 
 ## העלאה לאחסון חינמי (למשל Render.com)
 
@@ -39,7 +41,7 @@ npm start
 2. ב-[Render](https://render.com) ליצור **Web Service** חדש מחובר ל-repo:
    - Build Command: `npm install`
    - Start Command: `npm start`
-3. להגדיר את משתני הסביבה (`DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `BREVO_API_KEY`, `MAIL_FROM_EMAIL`, `OPENWEATHER_API_KEY`, `TZ`) בהגדרות השירות ב-Render (Environment).
+3. להגדיר את משתני הסביבה (`DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `BREVO_API_KEY`, `MAIL_FROM_EMAIL`, `OPENWEATHER_API_KEY`, `TZ`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) בהגדרות השירות ב-Render (Environment).
 
 **חשוב**: Render חוסם תקשורת SMTP יוצאת בתוכנית החינמית, ולכן שליחת המיילים חייבת לעבור דרך API מבוסס HTTPS כמו Brevo, ולא דרך Gmail SMTP רגיל.
 

@@ -158,6 +158,10 @@ async function updatePassword(id, passwordHash) {
   );
 }
 
+async function updateProfile(id, phone, address) {
+  await pool.query('UPDATE users SET phone = $1, address = $2 WHERE id = $3', [phone, address, id]);
+}
+
 async function deleteUser(id) {
   await pool.query('DELETE FROM users WHERE id = $1 AND is_admin = false', [id]);
 }
@@ -204,6 +208,7 @@ module.exports = {
   setResetToken,
   getUserByResetToken,
   updatePassword,
+  updateProfile,
   deleteUser,
   countUserBookingsForDate,
   createBooking,
