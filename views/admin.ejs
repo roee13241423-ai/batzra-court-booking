@@ -25,6 +25,7 @@
       <% if (pending.length === 0) { %>
         <p class="muted">אין בקשות ממתינות.</p>
       <% } else { %>
+      <div class="table-scroll">
         <table class="admin-table">
           <thead>
             <tr><th>שם</th><th>מייל</th><th>טלפון</th><th>כתובת</th><th>נרשם בתאריך</th><th>פעולות</th></tr>
@@ -54,58 +55,63 @@
             <% }) %>
           </tbody>
         </table>
+      </div>
       <% } %>
     </div>
 
     <div class="card tabs-section">
       <h3>משתמשים מאושרים (<%= approved.length %>)</h3>
-      <table class="admin-table">
-        <thead>
-          <tr><th>שם</th><th>מייל</th><th>טלפון</th><th>כתובת</th><th>מנהל</th><th>פעולות</th></tr>
-        </thead>
-        <tbody>
-          <% approved.forEach(u => { %>
-            <tr>
-              <td><%= u.firstName %> <%= u.lastName %></td>
-              <td><%= u.email %></td>
-              <td><%= u.phone %></td>
-              <td><%= u.address %></td>
-              <td><%= u.isAdmin ? 'כן' : '' %></td>
-              <td>
-                <% if (!u.isAdmin) { %>
-                  <form method="POST" action="/admin/users/<%= u.id %>/delete" onsubmit="return confirm('להסיר את המשתמש? כל השריונים שלו יימחקו.');" style="display:inline;">
-                    <button class="btn small danger" type="submit">הסרה</button>
-                  </form>
-                <% } %>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="admin-table">
+          <thead>
+            <tr><th>שם</th><th>מייל</th><th>טלפון</th><th>כתובת</th><th>מנהל</th><th>פעולות</th></tr>
+          </thead>
+          <tbody>
+            <% approved.forEach(u => { %>
+              <tr>
+                <td><%= u.firstName %> <%= u.lastName %></td>
+                <td><%= u.email %></td>
+                <td><%= u.phone %></td>
+                <td><%= u.address %></td>
+                <td><%= u.isAdmin ? 'כן' : '' %></td>
+                <td>
+                  <% if (!u.isAdmin) { %>
+                    <form method="POST" action="/admin/users/<%= u.id %>/delete" onsubmit="return confirm('להסיר את המשתמש? כל השריונים שלו יימחקו.');" style="display:inline;">
+                      <button class="btn small danger" type="submit">הסרה</button>
+                    </form>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <% if (rejected.length > 0) { %>
     <div class="card tabs-section">
       <h3>נדחו (<%= rejected.length %>)</h3>
-      <table class="admin-table">
-        <thead><tr><th>שם</th><th>מייל</th><th>פעולות</th></tr></thead>
-        <tbody>
-          <% rejected.forEach(u => { %>
-            <tr>
-              <td><%= u.firstName %> <%= u.lastName %></td>
-              <td><%= u.email %></td>
-              <td>
-                <form method="POST" action="/admin/users/<%= u.id %>/approve" style="display:inline;">
-                  <button class="btn small" type="submit">אישור בכל זאת</button>
-                </form>
-                <form method="POST" action="/admin/users/<%= u.id %>/delete" onsubmit="return confirm('להסיר לצמיתות?');" style="display:inline;">
-                  <button class="btn small danger" type="submit">הסרה</button>
-                </form>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
+      <div class="table-scroll">
+        <table class="admin-table">
+          <thead><tr><th>שם</th><th>מייל</th><th>פעולות</th></tr></thead>
+          <tbody>
+            <% rejected.forEach(u => { %>
+              <tr>
+                <td><%= u.firstName %> <%= u.lastName %></td>
+                <td><%= u.email %></td>
+                <td>
+                  <form method="POST" action="/admin/users/<%= u.id %>/approve" style="display:inline;">
+                    <button class="btn small" type="submit">אישור בכל זאת</button>
+                  </form>
+                  <form method="POST" action="/admin/users/<%= u.id %>/delete" onsubmit="return confirm('להסיר לצמיתות?');" style="display:inline;">
+                    <button class="btn small danger" type="submit">הסרה</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
     </div>
     <% } %>
 
@@ -115,6 +121,7 @@
       <% if (bookings.length === 0) { %>
         <p class="muted">אין שריונים קרובים.</p>
       <% } else { %>
+      <div class="table-scroll">
         <table class="admin-table">
           <thead><tr><th>תאריך</th><th>יום</th><th>שעה</th><th>שריין</th><th>פעולות</th></tr></thead>
           <tbody>
@@ -133,6 +140,7 @@
             <% }) %>
           </tbody>
         </table>
+      </div>
       <% } %>
     </div>
 
