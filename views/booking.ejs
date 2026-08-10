@@ -7,8 +7,7 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <header class="topbar">
-    <h1>מגרש מושב בצרה</h1>
+  <header class="topbar topbar-centered">
     <div class="user-info">
       <span>שלום, <%= user.firstName %> <%= user.lastName %><% if (user.isAdmin) { %> (מנהל)<% } %></span>
       <% if (user.isAdmin) { %><a href="/admin">ניהול</a><% } %>
@@ -16,6 +15,8 @@
         <button class="btn small secondary" type="submit">יציאה</button>
       </form>
     </div>
+    <h1 class="topbar-title">הזמנת מגרשים - מושב בצרה</h1>
+    <div class="topbar-spacer"></div>
   </header>
 
   <div class="container">
