@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const path = require('path');
 const db = require('./db');
 const mailer = require('./mailer');
@@ -13,6 +14,7 @@ const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמיש
 const HOURS = Array.from({ length: 18 }, (_, i) => i + 6); // 6..23
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const VERIFICATION_TTL_MS = 15 * 60 * 1000; // 15 minutes
+const RESET_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 // --- date helpers (local time, no timezone conversion) ---
 function pad(n) { return String(n).padStart(2, '0'); }
@@ -63,6 +65,25 @@ async function sendVerificationEmail(user, code) {
     });
   } catch (err) {
     console.error('שגיאה בשליחת מייל אימות:', err.message);
+  }
+}
+
+async function sendResetEmail(user, resetUrl) {
+  try {
+    await mailer.sendMail({
+      to: user.email,
+      subject: 'איפוס סיסמה - מגרש מושב בצרה',
+      html: `
+        <div dir="rtl" style="font-family: Arial, sans-serif;">
+          <p>שלום ${user.firstName},</p>
+          <p>קיבלנו בקשה לאיפוס הסיסמה שלך. ללחוץ על הקישור כדי לבחור סיסמה חדשה:</p>
+          <p><a href="${resetUrl}">${resetUrl}</a></p>
+          <p>הקישור בתוקף ל-30 דקות. אם לא ביקשת לאפס סיסמה, אפשר להתעלם מהמייל הזה.</p>
+        </div>
+      `
+    });
+  } catch (err) {
+    console.error('שגיאה בשליחת מייל איפוס סיסמה:', err.message);
   }
 }
 
@@ -224,14 +245,14 @@ app.get('/pending', asyncRoute(async (req, res) => {
 }));
 
 app.get('/login', (req, res) => {
-  res.render('login', { error: null });
+  res.render('login', { error: null, resetSuccess: req.query.resetSuccess === '1' });
 });
 
 app.post('/login', asyncRoute(async (req, res) => {
   const { email, password } = req.body;
   const user = await db.getUserByEmail((email || '').toLowerCase().trim());
   if (!user || !bcrypt.compareSync(password || '', user.passwordHash)) {
-    return res.render('login', { error: 'מייל או סיסמה שגויים' });
+    return res.render('login', { error: 'מייל או סיסמה שגויים', resetSuccess: false });
   }
   req.session.userId = user.id;
   applyRememberMe(req, !!req.body.rememberMe);
@@ -241,6 +262,55 @@ app.post('/login', asyncRoute(async (req, res) => {
 app.post('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
+
+app.get('/forgot-password', (req, res) => {
+  res.render('forgot-password', { error: null, sent: false });
+});
+
+app.post('/forgot-password', asyncRoute(async (req, res) => {
+  const email = (req.body.email || '').toLowerCase().trim();
+  const user = await db.getUserByEmail(email);
+
+  if (user) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + RESET_TTL_MS);
+    await db.setResetToken(user.id, token, expires);
+    const resetUrl = `${req.protocol}://${req.get('host')}/reset-password/${token}`;
+    sendResetEmail(user, resetUrl); // fire-and-forget, see /register
+  }
+
+  // Same response whether or not the email is registered, so we don't leak who has an account.
+  res.render('forgot-password', { error: null, sent: true });
+}));
+
+app.get('/reset-password/:token', asyncRoute(async (req, res) => {
+  const user = await db.getUserByResetToken(req.params.token);
+  const expired = !user || !user.resetExpires || new Date(user.resetExpires) < new Date();
+  if (expired) {
+    return res.render('reset-password', { error: 'הקישור לא תקין או שפג תוקפו. יש לבקש קישור חדש.', token: null });
+  }
+  res.render('reset-password', { error: null, token: req.params.token });
+}));
+
+app.post('/reset-password/:token', asyncRoute(async (req, res) => {
+  const user = await db.getUserByResetToken(req.params.token);
+  const expired = !user || !user.resetExpires || new Date(user.resetExpires) < new Date();
+  if (expired) {
+    return res.render('reset-password', { error: 'הקישור לא תקין או שפג תוקפו. יש לבקש קישור חדש.', token: null });
+  }
+
+  const { password, confirmPassword } = req.body;
+  if (!password || password.length < 6) {
+    return res.render('reset-password', { error: 'הסיסמה חייבת להכיל לפחות 6 תווים', token: req.params.token });
+  }
+  if (password !== confirmPassword) {
+    return res.render('reset-password', { error: 'הסיסמאות אינן תואמות', token: req.params.token });
+  }
+
+  const passwordHash = bcrypt.hashSync(password, 10);
+  await db.updatePassword(user.id, passwordHash);
+  res.redirect('/login?resetSuccess=1');
+}));
 
 app.get('/booking', requireLogin(async (req, res) => {
   let offset = parseInt(req.query.offset, 10);

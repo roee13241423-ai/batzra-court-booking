@@ -24,6 +24,8 @@ async function init() {
       email_verified BOOLEAN NOT NULL DEFAULT false,
       verification_code TEXT,
       verification_expires TIMESTAMPTZ,
+      reset_token TEXT,
+      reset_expires TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `);
@@ -32,6 +34,8 @@ async function init() {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code TEXT;`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires TIMESTAMPTZ;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMPTZ;`);
   // Admins predate email verification and should never be locked out by it.
   await pool.query(`UPDATE users SET email_verified = true WHERE is_admin = true AND email_verified = false;`);
 
@@ -61,6 +65,8 @@ function mapUser(row) {
     emailVerified: row.email_verified,
     verificationCode: row.verification_code,
     verificationExpires: row.verification_expires,
+    resetToken: row.reset_token,
+    resetExpires: row.reset_expires,
     createdAt: row.created_at
   };
 }
@@ -124,6 +130,22 @@ async function markEmailVerified(id) {
   );
 }
 
+async function setResetToken(id, token, expires) {
+  await pool.query('UPDATE users SET reset_token = $1, reset_expires = $2 WHERE id = $3', [token, expires, id]);
+}
+
+async function getUserByResetToken(token) {
+  const { rows } = await pool.query('SELECT * FROM users WHERE reset_token = $1', [token]);
+  return rows[0] ? mapUser(rows[0]) : null;
+}
+
+async function updatePassword(id, passwordHash) {
+  await pool.query(
+    'UPDATE users SET password_hash = $1, reset_token = NULL, reset_expires = NULL WHERE id = $2',
+    [passwordHash, id]
+  );
+}
+
 async function deleteUser(id) {
   await pool.query('DELETE FROM users WHERE id = $1 AND is_admin = false', [id]);
 }
@@ -156,6 +178,9 @@ module.exports = {
   setUserStatus,
   setVerificationCode,
   markEmailVerified,
+  setResetToken,
+  getUserByResetToken,
+  updatePassword,
   deleteUser,
   createBooking,
   deleteBookingByOwner,

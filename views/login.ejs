@@ -15,6 +15,9 @@
       <% if (error) { %>
         <div class="error"><%= error %></div>
       <% } %>
+      <% if (resetSuccess) { %>
+        <div class="error" style="background:#dcfce7; color:#166534;">הסיסמה עודכנה בהצלחה. אפשר להתחבר עם הסיסמה החדשה.</div>
+      <% } %>
       <form class="stack" method="POST" action="/login">
         <label for="email">כתובת מייל</label>
         <input type="email" id="email" name="email" required>
@@ -34,6 +37,9 @@
           <button class="btn" type="submit">התחברות</button>
         </div>
       </form>
+      <div class="link-row">
+        <a href="/forgot-password">שכחתי סיסמה</a>
+      </div>
       <div class="link-row">
         עדיין לא נרשמת? <a href="/register">הרשמה</a>
       </div>
