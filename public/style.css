@@ -128,6 +128,7 @@ table.grid th, table.grid td {
   border: 1px solid var(--border);
   padding: 4px;
   text-align: center;
+  position: relative;
 }
 
 table.grid th {
@@ -154,9 +155,36 @@ table.grid th:first-child {
 
 .slot.free { background: var(--free); color: #14532d; font-weight: 600; }
 .slot.free:hover { background: #4ade80; }
-.slot.taken { background: var(--taken); color: #7f1d1d; cursor: default; line-height: 1.3; }
+.slot.taken { background: var(--taken); color: #7f1d1d; cursor: pointer; line-height: 1.3; }
 .slot.taken small { display: block; font-size: 10px; font-weight: normal; word-break: break-word; }
 .slot.mine { background: var(--mine); color: #1e3a8a; font-weight: 600; }
+
+.taken-details summary { list-style: none; }
+.taken-details summary::-webkit-details-marker { display: none; }
+.taken-details summary::marker { content: ""; }
+
+.taken-details .contact-card {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: auto;
+  z-index: 10;
+  margin-top: 2px;
+  min-width: 170px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+  padding: 10px;
+  text-align: right;
+  white-space: normal;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.taken-details .contact-card strong { display: block; margin-bottom: 4px; }
+.taken-details .contact-card a { display: block; color: var(--primary); text-decoration: none; }
+.taken-details .contact-card a:hover { text-decoration: underline; }
 .slot.past { background: var(--past); color: #f1f5f9; cursor: default; }
 
 .week-nav {

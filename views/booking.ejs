@@ -64,7 +64,14 @@
                           <button type="submit" class="slot mine">שלך (ביטול)</button>
                         </form>
                       <% } else { %>
-                        <span class="slot taken">תפוס<br><small><%= cell.ownerName %></small></span>
+                        <details class="taken-details" name="taken-contact">
+                          <summary class="slot taken">תפוס<br><small><%= cell.ownerName %></small></summary>
+                          <div class="contact-card">
+                            <strong><%= cell.ownerName %></strong>
+                            <% if (cell.ownerPhone) { %><a href="tel:<%= cell.ownerPhone %>">📞 <%= cell.ownerPhone %></a><% } %>
+                            <% if (cell.ownerEmail) { %><a href="mailto:<%= cell.ownerEmail %>">✉️ <%= cell.ownerEmail %></a><% } %>
+                          </div>
+                        </details>
                       <% } %>
                     <% } else if (cell.isPast) { %>
                       <span class="slot past">-</span>

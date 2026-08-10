@@ -260,7 +260,9 @@ app.get('/booking', requireLogin(async (req, res) => {
         grid[day.dateStr][hour] = {
           taken: true,
           mine: booking.userId === req.user.id,
-          ownerName: owner ? `${owner.firstName} ${owner.lastName}` : ''
+          ownerName: owner ? `${owner.firstName} ${owner.lastName}` : '',
+          ownerPhone: owner ? owner.phone : '',
+          ownerEmail: owner ? owner.email : ''
         };
       } else {
         grid[day.dateStr][hour] = { taken: false, isPast: isSlotPast(day.dateStr, hour) };
