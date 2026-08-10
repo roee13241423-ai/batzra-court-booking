@@ -1,6 +1,6 @@
 :root {
-  --primary: #2563eb;
-  --primary-dark: #1d4ed8;
+  --primary: #059669;
+  --primary-dark: #047857;
   --danger: #dc2626;
   --bg: #f5f7fa;
   --card: #ffffff;
@@ -29,34 +29,84 @@ body {
   padding: 24px 16px 60px;
 }
 
+.welcome-banner {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(5,150,105,0.3);
+}
+
+.welcome-banner-top {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.banner-link {
+  color: rgba(255,255,255,0.9);
+  font-size: 13px;
+  text-decoration: none;
+  background: rgba(255,255,255,0.15);
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+
+.banner-link:hover { background: rgba(255,255,255,0.25); }
+
+.banner-link-btn {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.welcome-banner-title {
+  margin: 0 0 4px;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.welcome-banner-subtitle {
+  margin: 0;
+  font-size: 15px;
+  opacity: 0.9;
+}
+
 .court-tabs {
   display: flex;
   justify-content: center;
-  gap: 12px;
+  gap: 16px;
   margin-bottom: 20px;
   flex-wrap: wrap;
 }
 
-.court-tab {
-  display: inline-block;
-  padding: 14px 32px;
-  border-radius: 10px;
+.court-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 150px;
+  padding: 20px 16px;
+  border-radius: 14px;
   background: var(--card);
   border: 2px solid var(--border);
   color: var(--text);
   text-decoration: none;
-  font-weight: 700;
-  font-size: 17px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
-.court-tab:hover { background: #eef2ff; }
+.court-card-icon { font-size: 32px; }
+.court-card-label { font-weight: 700; font-size: 15px; }
 
-.court-tab.active {
+.court-card:hover { border-color: var(--primary); }
+
+.court-card.active {
   background: var(--primary);
   border-color: var(--primary);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(37,99,235,0.35);
+  box-shadow: 0 4px 12px rgba(5,150,105,0.35);
 }
 
 header.topbar {
@@ -81,25 +131,6 @@ header.topbar .user-info {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-header.topbar-centered {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-}
-
-header.topbar-centered .topbar-title {
-  text-align: center;
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--primary);
-  margin: 0;
-  letter-spacing: 0.5px;
-}
-
-header.topbar-centered .topbar-spacer {
-  visibility: hidden;
 }
 
 .card {
@@ -317,17 +348,14 @@ table.admin-table th { background: #f8fafc; }
   header.topbar h1 { font-size: 16px; }
   header.topbar .user-info { width: 100%; justify-content: space-between; }
 
-  header.topbar-centered {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    gap: 8px;
-  }
-  header.topbar-centered .user-info { width: 100%; justify-content: space-between; order: 2; }
-  header.topbar-centered .topbar-title { font-size: 20px; order: 1; }
-  header.topbar-centered .topbar-spacer { display: none; }
+  .welcome-banner { padding: 18px; }
+  .welcome-banner-title { font-size: 21px; }
+  .welcome-banner-subtitle { font-size: 13px; }
 
   .court-tabs { justify-content: center; }
-  .court-tab { flex: 1 1 auto; text-align: center; }
+  .court-card { width: 130px; padding: 16px 10px; }
+  .court-card-icon { font-size: 26px; }
+  .court-card-label { font-size: 13px; }
 
   form.stack input { font-size: 16px; } /* prevents iOS auto-zoom on focus */
 

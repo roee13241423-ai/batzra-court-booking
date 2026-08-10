@@ -7,22 +7,24 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <header class="topbar topbar-centered">
-    <div class="user-info">
-      <span>שלום, <%= user.firstName %> <%= user.lastName %><% if (user.isAdmin) { %> (מנהל)<% } %></span>
-      <% if (user.isAdmin) { %><a href="/admin">ניהול</a><% } %>
-      <form method="POST" action="/logout" style="display:inline;">
-        <button class="btn small secondary" type="submit">יציאה</button>
-      </form>
-    </div>
-    <h1 class="topbar-title">הזמנת מגרשים - מושב בצרה</h1>
-    <div class="topbar-spacer"></div>
-  </header>
-
   <div class="container">
+    <div class="welcome-banner">
+      <div class="welcome-banner-top">
+        <% if (user.isAdmin) { %><a href="/admin" class="banner-link">ניהול</a><% } %>
+        <form method="POST" action="/logout" style="display:inline;">
+          <button type="submit" class="banner-link banner-link-btn">יציאה</button>
+        </form>
+      </div>
+      <h1 class="welcome-banner-title">ברוכים הבאים, <%= user.firstName %> 👋</h1>
+      <p class="welcome-banner-subtitle">הזמנת מגרשים - מושב בצרה</p>
+    </div>
+
     <div class="court-tabs">
       <% courts.forEach(c => { %>
-        <a class="court-tab <%= c.id === court ? 'active' : '' %>" href="/booking?court=<%= c.id %>">מגרש <%= c.name %></a>
+        <a class="court-card <%= c.id === court ? 'active' : '' %>" href="/booking?court=<%= c.id %>">
+          <span class="court-card-icon"><%= c.id === 'tennis' ? '🎾' : '🏐' %></span>
+          <span class="court-card-label">מגרש <%= c.name %></span>
+        </a>
       <% }) %>
     </div>
 
