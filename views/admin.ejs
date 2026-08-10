@@ -123,10 +123,11 @@
       <% } else { %>
       <div class="table-scroll">
         <table class="admin-table">
-          <thead><tr><th>תאריך</th><th>יום</th><th>שעה</th><th>שריין</th><th>פעולות</th></tr></thead>
+          <thead><tr><th>מגרש</th><th>תאריך</th><th>יום</th><th>שעה</th><th>שריין</th><th>פעולות</th></tr></thead>
           <tbody>
             <% bookings.forEach(b => { %>
               <tr>
+                <td><%= b.courtName %></td>
                 <td><%= b.dateLabel %></td>
                 <td><%= b.dayName %></td>
                 <td><%= b.hour %>:00</td>

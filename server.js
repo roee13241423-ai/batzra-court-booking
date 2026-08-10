@@ -13,6 +13,12 @@ const PORT = process.env.PORT || 3000;
 const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 const HOURS = Array.from({ length: 18 }, (_, i) => i + 6); // 6..23
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const COURTS = [
+  { id: 'footvolley', name: 'פוציוולי' },
+  { id: 'tennis', name: 'טניס' }
+];
+const DEFAULT_COURT = 'footvolley';
+function isValidCourt(court) { return COURTS.some(c => c.id === court); }
 const VERIFICATION_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const RESET_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -316,6 +322,7 @@ app.post('/reset-password/:token', asyncRoute(async (req, res) => {
 app.get('/booking', requireLogin(async (req, res) => {
   let offset = parseInt(req.query.offset, 10);
   if (isNaN(offset) || offset < 0) offset = 0;
+  const court = isValidCourt(req.query.court) ? req.query.court : DEFAULT_COURT;
 
   const weekStart = addDays(startOfWeek(new Date()), offset * 7);
   const days = [];
@@ -328,7 +335,8 @@ app.get('/booking', requireLogin(async (req, res) => {
     });
   }
 
-  const [bookings, users] = await Promise.all([db.getAllBookings(), db.getAllUsers()]);
+  const [allBookings, users] = await Promise.all([db.getAllBookings(), db.getAllUsers()]);
+  const bookings = allBookings.filter(b => b.court === court);
   const usersById = new Map(users.map(u => [u.id, u]));
 
   const grid = {};
@@ -351,7 +359,7 @@ app.get('/booking', requireLogin(async (req, res) => {
     });
   });
 
-  res.render('booking', { user: req.user, days, hours: HOURS, grid, offset });
+  res.render('booking', { user: req.user, days, hours: HOURS, grid, offset, courts: COURTS, court });
 }));
 
 app.post('/booking/:date/:hour', requireLogin(async (req, res) => {
@@ -359,12 +367,13 @@ app.post('/booking/:date/:hour', requireLogin(async (req, res) => {
   const hour = parseInt(req.params.hour, 10);
   let offset = parseInt(req.query.offset, 10);
   if (isNaN(offset) || offset < 0) offset = 0;
+  const court = isValidCourt(req.query.court) ? req.query.court : DEFAULT_COURT;
 
   if (!DATE_RE.test(date) || isNaN(hour) || !HOURS.includes(hour) || isSlotPast(date, hour)) {
     return res.status(400).send('משבצת לא תקינה');
   }
-  await db.createBooking(date, hour, req.user.id);
-  res.redirect(`/booking?offset=${offset}`);
+  await db.createBooking(court, date, hour, req.user.id);
+  res.redirect(`/booking?offset=${offset}&court=${court}`);
 }));
 
 app.post('/booking/:date/:hour/cancel', requireLogin(async (req, res) => {
@@ -372,9 +381,10 @@ app.post('/booking/:date/:hour/cancel', requireLogin(async (req, res) => {
   const hour = parseInt(req.params.hour, 10);
   let offset = parseInt(req.query.offset, 10);
   if (isNaN(offset) || offset < 0) offset = 0;
+  const court = isValidCourt(req.query.court) ? req.query.court : DEFAULT_COURT;
 
-  await db.deleteBookingByOwner(date, hour, req.user.id);
-  res.redirect(`/booking?offset=${offset}`);
+  await db.deleteBookingByOwner(court, date, hour, req.user.id);
+  res.redirect(`/booking?offset=${offset}&court=${court}`);
 }));
 
 app.get('/admin', requireAdmin(async (req, res) => {
@@ -394,6 +404,7 @@ app.get('/admin', requireAdmin(async (req, res) => {
       return {
         ...b,
         ownerName: owner ? `${owner.firstName} ${owner.lastName}` : 'לא ידוע',
+        courtName: (COURTS.find(c => c.id === b.court) || {}).name || b.court,
         dayName: DAY_NAMES[new Date(Number(y), Number(m) - 1, Number(d)).getDay()],
         dateLabel: `${d}/${m}/${y}`
       };

@@ -19,18 +19,24 @@
   </header>
 
   <div class="container">
+    <div class="court-tabs">
+      <% courts.forEach(c => { %>
+        <a class="court-tab <%= c.id === court ? 'active' : '' %>" href="/booking?court=<%= c.id %>">מגרש <%= c.name %></a>
+      <% }) %>
+    </div>
+
     <div class="card">
-      <h2>לוח שריונים</h2>
+      <h2>לוח שריונים - <%= courts.find(c => c.id === court).name %></h2>
       <p class="muted">לחצו על משבצת פנויה כדי לשריין אותה לתאריך ולשעה הספציפיים. השריון הוא חד-פעמי בלבד.</p>
 
       <div class="week-nav">
         <% if (offset > 0) { %>
-          <a class="btn small secondary" href="/booking?offset=<%= offset - 1 %>">&rarr; שבוע קודם</a>
+          <a class="btn small secondary" href="/booking?offset=<%= offset - 1 %>&court=<%= court %>">&rarr; שבוע קודם</a>
         <% } else { %>
           <span></span>
         <% } %>
         <span class="muted"><%= days[0].label %> - <%= days[6].label %></span>
-        <a class="btn small secondary" href="/booking?offset=<%= offset + 1 %>">שבוע הבא &larr;</a>
+        <a class="btn small secondary" href="/booking?offset=<%= offset + 1 %>&court=<%= court %>">שבוע הבא &larr;</a>
       </div>
 
       <div class="legend">
@@ -60,7 +66,7 @@
                   <td>
                     <% if (cell.taken) { %>
                       <% if (cell.mine) { %>
-                        <form method="POST" action="/booking/<%= day.dateStr %>/<%= hour %>/cancel?offset=<%= offset %>">
+                        <form method="POST" action="/booking/<%= day.dateStr %>/<%= hour %>/cancel?offset=<%= offset %>&court=<%= court %>">
                           <button type="submit" class="slot mine">שלך (ביטול)</button>
                         </form>
                       <% } else { %>
@@ -76,7 +82,7 @@
                     <% } else if (cell.isPast) { %>
                       <span class="slot past">-</span>
                     <% } else { %>
-                      <form method="POST" action="/booking/<%= day.dateStr %>/<%= hour %>?offset=<%= offset %>">
+                      <form method="POST" action="/booking/<%= day.dateStr %>/<%= hour %>?offset=<%= offset %>&court=<%= court %>">
                         <button type="submit" class="slot free">פנוי</button>
                       </form>
                     <% } %>

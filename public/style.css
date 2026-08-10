@@ -29,6 +29,33 @@ body {
   padding: 24px 16px 60px;
 }
 
+.court-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.court-tab {
+  display: inline-block;
+  padding: 10px 18px;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.court-tab:hover { background: #eef2ff; }
+
+.court-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
 header.topbar {
   background: var(--card);
   border-bottom: 1px solid var(--border);

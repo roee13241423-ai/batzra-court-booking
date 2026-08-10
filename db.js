@@ -42,13 +42,24 @@ async function init() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS bookings (
       id SERIAL PRIMARY KEY,
+      court TEXT NOT NULL DEFAULT 'footvolley',
       date TEXT NOT NULL,
       hour INTEGER NOT NULL,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-      UNIQUE(date, hour)
+      UNIQUE(court, date, hour)
     );
   `);
+  await pool.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS court TEXT NOT NULL DEFAULT 'footvolley';`);
+  // Older DBs have a (date, hour) unique constraint from before courts existed - replace it
+  // with one that includes court, but only once (this block runs on every startup).
+  const { rows: existingConstraint } = await pool.query(
+    `SELECT 1 FROM pg_constraint WHERE conname = 'bookings_court_date_hour_key'`
+  );
+  if (existingConstraint.length === 0) {
+    await pool.query(`ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_date_hour_key;`);
+    await pool.query(`ALTER TABLE bookings ADD CONSTRAINT bookings_court_date_hour_key UNIQUE (court, date, hour);`);
+  }
 }
 
 function mapUser(row) {
@@ -74,6 +85,7 @@ function mapUser(row) {
 function mapBooking(row) {
   return {
     id: row.id,
+    court: row.court,
     date: row.date,
     hour: row.hour,
     userId: row.user_id,
@@ -150,17 +162,20 @@ async function deleteUser(id) {
   await pool.query('DELETE FROM users WHERE id = $1 AND is_admin = false', [id]);
 }
 
-async function createBooking(date, hour, userId) {
+async function createBooking(court, date, hour, userId) {
   const { rows } = await pool.query(
-    `INSERT INTO bookings (date, hour, user_id) VALUES ($1, $2, $3)
-     ON CONFLICT (date, hour) DO NOTHING RETURNING *`,
-    [date, hour, userId]
+    `INSERT INTO bookings (court, date, hour, user_id) VALUES ($1, $2, $3, $4)
+     ON CONFLICT (court, date, hour) DO NOTHING RETURNING *`,
+    [court, date, hour, userId]
   );
   return rows[0] ? mapBooking(rows[0]) : null;
 }
 
-async function deleteBookingByOwner(date, hour, userId) {
-  await pool.query('DELETE FROM bookings WHERE date = $1 AND hour = $2 AND user_id = $3', [date, hour, userId]);
+async function deleteBookingByOwner(court, date, hour, userId) {
+  await pool.query(
+    'DELETE FROM bookings WHERE court = $1 AND date = $2 AND hour = $3 AND user_id = $4',
+    [court, date, hour, userId]
+  );
 }
 
 async function deleteBookingById(id) {
