@@ -4,6 +4,7 @@ const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const db = require('./db');
+const mailer = require('./mailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,6 +12,7 @@ const PORT = process.env.PORT || 3000;
 const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 const HOURS = Array.from({ length: 18 }, (_, i) => i + 6); // 6..23
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const VERIFICATION_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 // --- date helpers (local time, no timezone conversion) ---
 function pad(n) { return String(n).padStart(2, '0'); }
@@ -41,6 +43,49 @@ function isSlotPast(dateStr, hour) {
   return slotEnd <= new Date();
 }
 
+function generateVerificationCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+async function sendVerificationEmail(user, code) {
+  try {
+    await mailer.sendMail({
+      to: user.email,
+      subject: 'קוד אימות - מגרש מושב בצרה',
+      html: `
+        <div dir="rtl" style="font-family: Arial, sans-serif;">
+          <p>שלום ${user.firstName},</p>
+          <p>קוד האימות שלך להרשמה לאתר שריון המגרש הוא:</p>
+          <p style="font-size: 28px; font-weight: bold; letter-spacing: 4px;">${code}</p>
+          <p>הקוד בתוקף ל-15 דקות.</p>
+        </div>
+      `
+    });
+  } catch (err) {
+    console.error('שגיאה בשליחת מייל אימות:', err.message);
+  }
+}
+
+async function sendBookingConfirmationEmail(user, dateStr, hour) {
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dayName = DAY_NAMES[new Date(y, m - 1, d).getDay()];
+    await mailer.sendMail({
+      to: user.email,
+      subject: 'אישור שריון מגרש - מושב בצרה',
+      html: `
+        <div dir="rtl" style="font-family: Arial, sans-serif;">
+          <p>שלום ${user.firstName},</p>
+          <p>השריון שלך אושר בהצלחה:</p>
+          <p style="font-size: 18px; font-weight: bold;">יום ${dayName}, ${pad(d)}/${pad(m)}/${y} בשעה ${hour}:00</p>
+        </div>
+      `
+    });
+  } catch (err) {
+    console.error('שגיאה בשליחת מייל אישור שריון:', err.message);
+  }
+}
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.set('trust proxy', 1);
@@ -63,10 +108,17 @@ async function currentUser(req) {
   return db.getUserById(req.session.userId);
 }
 
+function postLoginRedirect(user) {
+  if (!user.emailVerified) return '/verify-email';
+  if (user.status !== 'approved') return '/pending';
+  return '/booking';
+}
+
 function requireLogin(fn) {
   return asyncRoute(async (req, res, next) => {
     const user = await currentUser(req);
     if (!user) return res.redirect('/login');
+    if (!user.emailVerified) return res.redirect('/verify-email');
     if (user.status !== 'approved') return res.redirect('/pending');
     req.user = user;
     return fn(req, res, next);
@@ -87,8 +139,7 @@ function requireAdmin(fn) {
 app.get('/', asyncRoute(async (req, res) => {
   const user = await currentUser(req);
   if (!user) return res.redirect('/login');
-  if (user.status !== 'approved') return res.redirect('/pending');
-  res.redirect('/booking');
+  res.redirect(postLoginRedirect(user));
 }));
 
 app.get('/register', (req, res) => {
@@ -96,10 +147,10 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/register', asyncRoute(async (req, res) => {
-  const { firstName, lastName, address, email, password, confirmPassword } = req.body;
-  const form = { firstName, lastName, address, email };
+  const { firstName, lastName, address, phone, email, password, confirmPassword } = req.body;
+  const form = { firstName, lastName, address, phone, email };
 
-  if (!firstName || !lastName || !address || !email || !password) {
+  if (!firstName || !lastName || !address || !phone || !email || !password) {
     return res.render('register', { error: 'יש למלא את כל השדות', form });
   }
   if (password.length < 6) {
@@ -116,23 +167,69 @@ app.post('/register', asyncRoute(async (req, res) => {
   }
 
   const passwordHash = bcrypt.hashSync(password, 10);
+  const code = generateVerificationCode();
+  const expires = new Date(Date.now() + VERIFICATION_TTL_MS);
+
   const newUser = await db.createUser({
     firstName: firstName.trim(),
     lastName: lastName.trim(),
     address: address.trim(),
+    phone: phone.trim(),
     email: emailLower,
     passwordHash,
     status: 'pending',
-    isAdmin: false
+    isAdmin: false,
+    emailVerified: false,
+    verificationCode: code,
+    verificationExpires: expires
   });
 
+  await sendVerificationEmail(newUser, code);
+
   req.session.userId = newUser.id;
-  res.redirect('/pending');
+  res.redirect('/verify-email');
+}));
+
+app.get('/verify-email', asyncRoute(async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.redirect('/login');
+  if (user.emailVerified) return res.redirect(postLoginRedirect(user));
+  res.render('verify-email', { user, error: null, sent: false });
+}));
+
+app.post('/verify-email', asyncRoute(async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.redirect('/login');
+  if (user.emailVerified) return res.redirect(postLoginRedirect(user));
+
+  const { code } = req.body;
+  const expired = !user.verificationExpires || new Date(user.verificationExpires) < new Date();
+  if (!code || !user.verificationCode || code.trim() !== user.verificationCode || expired) {
+    return res.render('verify-email', { user, error: expired ? 'הקוד פג תוקף, יש לבקש קוד חדש' : 'קוד שגוי', sent: false });
+  }
+
+  await db.markEmailVerified(user.id);
+  const updatedUser = await db.getUserById(user.id);
+  res.redirect(postLoginRedirect(updatedUser));
+}));
+
+app.post('/verify-email/resend', asyncRoute(async (req, res) => {
+  const user = await currentUser(req);
+  if (!user) return res.redirect('/login');
+  if (user.emailVerified) return res.redirect(postLoginRedirect(user));
+
+  const code = generateVerificationCode();
+  const expires = new Date(Date.now() + VERIFICATION_TTL_MS);
+  await db.setVerificationCode(user.id, code, expires);
+  await sendVerificationEmail(user, code);
+
+  res.render('verify-email', { user, error: null, sent: true });
 }));
 
 app.get('/pending', asyncRoute(async (req, res) => {
   const user = await currentUser(req);
   if (!user) return res.redirect('/login');
+  if (!user.emailVerified) return res.redirect('/verify-email');
   if (user.status === 'approved') return res.redirect('/booking');
   res.render('pending', { user });
 }));
@@ -148,8 +245,7 @@ app.post('/login', asyncRoute(async (req, res) => {
     return res.render('login', { error: 'מייל או סיסמה שגויים' });
   }
   req.session.userId = user.id;
-  if (user.status !== 'approved') return res.redirect('/pending');
-  res.redirect('/booking');
+  res.redirect(postLoginRedirect(user));
 }));
 
 app.post('/logout', (req, res) => {
@@ -204,7 +300,10 @@ app.post('/booking/:date/:hour', requireLogin(async (req, res) => {
   if (!DATE_RE.test(date) || isNaN(hour) || !HOURS.includes(hour) || isSlotPast(date, hour)) {
     return res.status(400).send('משבצת לא תקינה');
   }
-  await db.createBooking(date, hour, req.user.id);
+  const booking = await db.createBooking(date, hour, req.user.id);
+  if (booking) {
+    await sendBookingConfirmationEmail(req.user, date, hour);
+  }
   res.redirect(`/booking?offset=${offset}`);
 }));
 
@@ -248,6 +347,11 @@ app.post('/admin/bookings/:id/delete', requireAdmin(async (req, res) => {
   res.redirect('/admin');
 }));
 
+app.post('/admin/users/:id/verify-email', requireAdmin(async (req, res) => {
+  await db.markEmailVerified(parseInt(req.params.id, 10));
+  res.redirect('/admin');
+}));
+
 app.post('/admin/users/:id/approve', requireAdmin(async (req, res) => {
   await db.setUserStatus(parseInt(req.params.id, 10), 'approved');
   res.redirect('/admin');
@@ -278,10 +382,12 @@ async function start() {
       firstName: 'מנהל',
       lastName: 'מערכת',
       address: '-',
+      phone: '',
       email: process.env.ADMIN_EMAIL.toLowerCase(),
       passwordHash,
       status: 'approved',
-      isAdmin: true
+      isAdmin: true,
+      emailVerified: true
     });
     console.log(`נוצר משתמש מנהל: ${process.env.ADMIN_EMAIL}`);
   }

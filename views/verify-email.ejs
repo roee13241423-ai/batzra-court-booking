@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>אימות מייל - מגרש מושב בצרה</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container" style="max-width:420px; margin-top:60px;">
+    <div class="card">
+      <h2>אימות כתובת מייל</h2>
+      <p class="muted">שלחנו קוד בן 6 ספרות לכתובת <strong><%= user.email %></strong>. יש להזין אותו כאן כדי להמשיך.</p>
+
+      <% if (error) { %>
+        <div class="error"><%= error %></div>
+      <% } %>
+      <% if (sent) { %>
+        <div class="error" style="background:#dcfce7; color:#166534;">קוד חדש נשלח למייל שלך.</div>
+      <% } %>
+
+      <form class="stack" method="POST" action="/verify-email">
+        <label for="code">קוד אימות</label>
+        <input type="text" id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autofocus required>
+
+        <div style="margin-top:20px;">
+          <button class="btn" type="submit">אימות</button>
+        </div>
+      </form>
+
+      <form method="POST" action="/verify-email/resend" style="margin-top:10px;">
+        <button class="btn secondary small" type="submit">שלח קוד חדש</button>
+      </form>
+
+      <form method="POST" action="/logout" style="margin-top:10px;">
+        <button class="btn secondary small" type="submit">יציאה</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

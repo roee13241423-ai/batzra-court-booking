@@ -27,16 +27,22 @@
       <% } else { %>
         <table class="admin-table">
           <thead>
-            <tr><th>שם</th><th>מייל</th><th>כתובת</th><th>נרשם בתאריך</th><th>פעולות</th></tr>
+            <tr><th>שם</th><th>מייל</th><th>טלפון</th><th>כתובת</th><th>נרשם בתאריך</th><th>פעולות</th></tr>
           </thead>
           <tbody>
             <% pending.forEach(u => { %>
               <tr>
                 <td><%= u.firstName %> <%= u.lastName %></td>
-                <td><%= u.email %></td>
+                <td><%= u.email %><% if (!u.emailVerified) { %> <span class="muted">(מייל לא מאומת)</span><% } %></td>
+                <td><%= u.phone %></td>
                 <td><%= u.address %></td>
                 <td><%= new Date(u.createdAt).toLocaleDateString('he-IL') %></td>
                 <td>
+                  <% if (!u.emailVerified) { %>
+                    <form method="POST" action="/admin/users/<%= u.id %>/verify-email" style="display:inline;" onsubmit="return confirm('לאמת ידנית את המייל של המשתמש? (למקרה שהמייל לא הגיע)');">
+                      <button class="btn small secondary" type="submit">אמת מייל ידנית</button>
+                    </form>
+                  <% } %>
                   <form method="POST" action="/admin/users/<%= u.id %>/approve" style="display:inline;">
                     <button class="btn small" type="submit">אישור</button>
                   </form>
@@ -55,13 +61,14 @@
       <h3>משתמשים מאושרים (<%= approved.length %>)</h3>
       <table class="admin-table">
         <thead>
-          <tr><th>שם</th><th>מייל</th><th>כתובת</th><th>מנהל</th><th>פעולות</th></tr>
+          <tr><th>שם</th><th>מייל</th><th>טלפון</th><th>כתובת</th><th>מנהל</th><th>פעולות</th></tr>
         </thead>
         <tbody>
           <% approved.forEach(u => { %>
             <tr>
               <td><%= u.firstName %> <%= u.lastName %></td>
               <td><%= u.email %></td>
+              <td><%= u.phone %></td>
               <td><%= u.address %></td>
               <td><%= u.isAdmin ? 'כן' : '' %></td>
               <td>

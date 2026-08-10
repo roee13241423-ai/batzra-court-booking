@@ -17,12 +17,22 @@ async function init() {
       last_name TEXT NOT NULL,
       address TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
+      phone TEXT NOT NULL DEFAULT '',
       password_hash TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending',
       is_admin BOOLEAN NOT NULL DEFAULT false,
+      email_verified BOOLEAN NOT NULL DEFAULT false,
+      verification_code TEXT,
+      verification_expires TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `);
+  // Safe to re-run on an existing table from before these columns existed.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT '';`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code TEXT;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires TIMESTAMPTZ;`);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS bookings (
       id SERIAL PRIMARY KEY,
@@ -42,9 +52,13 @@ function mapUser(row) {
     lastName: row.last_name,
     address: row.address,
     email: row.email,
+    phone: row.phone,
     passwordHash: row.password_hash,
     status: row.status,
     isAdmin: row.is_admin,
+    emailVerified: row.email_verified,
+    verificationCode: row.verification_code,
+    verificationExpires: row.verification_expires,
     createdAt: row.created_at
   };
 }
@@ -84,17 +98,28 @@ async function hasAdmin() {
   return rows.length > 0;
 }
 
-async function createUser({ firstName, lastName, address, email, passwordHash, status, isAdmin }) {
+async function createUser({ firstName, lastName, address, email, phone, passwordHash, status, isAdmin, emailVerified, verificationCode, verificationExpires }) {
   const { rows } = await pool.query(
-    `INSERT INTO users (first_name, last_name, address, email, password_hash, status, is_admin)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-    [firstName, lastName, address, email, passwordHash, status, isAdmin]
+    `INSERT INTO users (first_name, last_name, address, email, phone, password_hash, status, is_admin, email_verified, verification_code, verification_expires)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+    [firstName, lastName, address, email, phone || '', passwordHash, status, !!isAdmin, !!emailVerified, verificationCode || null, verificationExpires || null]
   );
   return mapUser(rows[0]);
 }
 
 async function setUserStatus(id, status) {
   await pool.query('UPDATE users SET status = $1 WHERE id = $2', [status, id]);
+}
+
+async function setVerificationCode(id, code, expires) {
+  await pool.query('UPDATE users SET verification_code = $1, verification_expires = $2 WHERE id = $3', [code, expires, id]);
+}
+
+async function markEmailVerified(id) {
+  await pool.query(
+    `UPDATE users SET email_verified = true, verification_code = NULL, verification_expires = NULL WHERE id = $1`,
+    [id]
+  );
 }
 
 async function deleteUser(id) {
@@ -127,6 +152,8 @@ module.exports = {
   hasAdmin,
   createUser,
   setUserStatus,
+  setVerificationCode,
+  markEmailVerified,
   deleteUser,
   createBooking,
   deleteBookingByOwner,
