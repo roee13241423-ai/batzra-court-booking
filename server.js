@@ -164,7 +164,7 @@ app.post('/register', asyncRoute(async (req, res) => {
     verificationExpires: expires
   });
 
-  await sendVerificationEmail(newUser, code);
+  sendVerificationEmail(newUser, code); // fire-and-forget: mail delivery shouldn't block registration
 
   req.session.userId = newUser.id;
   res.redirect('/verify-email');
@@ -201,7 +201,7 @@ app.post('/verify-email/resend', asyncRoute(async (req, res) => {
   const code = generateVerificationCode();
   const expires = new Date(Date.now() + VERIFICATION_TTL_MS);
   await db.setVerificationCode(user.id, code, expires);
-  await sendVerificationEmail(user, code);
+  sendVerificationEmail(user, code); // fire-and-forget, see /register
 
   res.render('verify-email', { user, error: null, sent: true });
 }));
