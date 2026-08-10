@@ -162,6 +162,14 @@ async function deleteUser(id) {
   await pool.query('DELETE FROM users WHERE id = $1 AND is_admin = false', [id]);
 }
 
+async function countUserBookingsForDate(userId, court, date) {
+  const { rows } = await pool.query(
+    'SELECT COUNT(*) FROM bookings WHERE user_id = $1 AND court = $2 AND date = $3',
+    [userId, court, date]
+  );
+  return parseInt(rows[0].count, 10);
+}
+
 async function createBooking(court, date, hour, userId) {
   const { rows } = await pool.query(
     `INSERT INTO bookings (court, date, hour, user_id) VALUES ($1, $2, $3, $4)
@@ -197,6 +205,7 @@ module.exports = {
   getUserByResetToken,
   updatePassword,
   deleteUser,
+  countUserBookingsForDate,
   createBooking,
   deleteBookingByOwner,
   deleteBookingById

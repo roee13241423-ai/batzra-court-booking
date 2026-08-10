@@ -28,9 +28,13 @@
       <% }) %>
     </div>
 
-    <div class="card">
-      <h2>לוח שריונים - <%= courts.find(c => c.id === court).name %></h2>
+    <div class="card booking-card">
+      <h2>הזמנת מגרש - <%= courts.find(c => c.id === court).name %></h2>
       <p class="muted">לחצו על משבצת פנויה כדי לשריין אותה לתאריך ולשעה הספציפיים. השריון הוא חד-פעמי בלבד.</p>
+
+      <% if (dailyLimitReached) { %>
+        <div class="error">אי אפשר לשריין - הגעת למכסה של <%= 2 %> שעות ביום במגרש הזה.</div>
+      <% } %>
 
       <div class="week-nav">
         <% if (offset > 0) { %>

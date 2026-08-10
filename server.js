@@ -19,6 +19,7 @@ const COURTS = [
 ];
 const DEFAULT_COURT = 'footvolley';
 function isValidCourt(court) { return COURTS.some(c => c.id === court); }
+const MAX_HOURS_PER_DAY_PER_COURT = 2;
 const VERIFICATION_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const RESET_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -359,7 +360,9 @@ app.get('/booking', requireLogin(async (req, res) => {
     });
   });
 
-  res.render('booking', { user: req.user, days, hours: HOURS, grid, offset, courts: COURTS, court });
+  const dailyLimitReached = req.query.error === 'limit';
+
+  res.render('booking', { user: req.user, days, hours: HOURS, grid, offset, courts: COURTS, court, dailyLimitReached });
 }));
 
 app.post('/booking/:date/:hour', requireLogin(async (req, res) => {
@@ -372,6 +375,12 @@ app.post('/booking/:date/:hour', requireLogin(async (req, res) => {
   if (!DATE_RE.test(date) || isNaN(hour) || !HOURS.includes(hour) || isSlotPast(date, hour)) {
     return res.status(400).send('משבצת לא תקינה');
   }
+
+  const existingCount = await db.countUserBookingsForDate(req.user.id, court, date);
+  if (existingCount >= MAX_HOURS_PER_DAY_PER_COURT) {
+    return res.redirect(`/booking?offset=${offset}&court=${court}&error=limit`);
+  }
+
   await db.createBooking(court, date, hour, req.user.id);
   res.redirect(`/booking?offset=${offset}&court=${court}`);
 }));
