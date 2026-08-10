@@ -179,7 +179,7 @@ async function currentUser(req) {
 }
 
 function needsProfileCompletion(user) {
-  return !user.phone || !user.address;
+  return !user.isAdmin && (!user.phone || !user.address);
 }
 
 function postLoginRedirect(user) {
