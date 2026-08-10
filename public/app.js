@@ -20,4 +20,22 @@ document.addEventListener('DOMContentLoaded', () => {
     tick();
     setInterval(tick, 1000);
   }
+
+  const loader = document.createElement('div');
+  loader.className = 'page-loader';
+  loader.innerHTML = '<div class="page-loader-spinner"></div>';
+  document.body.appendChild(loader);
+  const showLoader = () => loader.classList.add('active');
+
+  document.addEventListener('submit', () => showLoader(), true);
+
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('a[href]');
+    if (!link) return;
+    if (link.target === '_blank' || e.metaKey || e.ctrlKey) return;
+    const href = link.getAttribute('href');
+    if (!href || href.startsWith('#') || href.startsWith('tel:') || href.startsWith('mailto:')) return;
+    if (link.origin !== window.location.origin) return;
+    showLoader();
+  });
 });

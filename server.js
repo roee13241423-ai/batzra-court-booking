@@ -56,6 +56,7 @@ function isSlotPast(dateStr, hour) {
 const BATZRA_LAT = 32.32;
 const BATZRA_LON = 34.94;
 const WEATHER_CACHE_MS = 15 * 60 * 1000; // 15 minutes
+const WEATHER_RETRY_AFTER_FAILURE_MS = 5 * 60 * 1000; // don't hammer the API when it's failing
 const RAINY_CODES = new Set([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99]);
 let weatherCache = { data: null, fetchedAt: 0 };
 
@@ -77,6 +78,9 @@ async function getWeather() {
   if (weatherCache.data && now - weatherCache.fetchedAt < WEATHER_CACHE_MS) {
     return weatherCache.data;
   }
+  if (!weatherCache.data && weatherCache.fetchedAt && now - weatherCache.fetchedAt < WEATHER_RETRY_AFTER_FAILURE_MS) {
+    return null; // failed recently, don't hammer the API again yet
+  }
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 4000);
@@ -94,7 +98,8 @@ async function getWeather() {
     return data;
   } catch (err) {
     console.error('שגיאה בשליפת מזג אוויר:', err.message);
-    return weatherCache.data; // may be null; view handles that
+    weatherCache = { data: null, fetchedAt: now }; // remember the failure so we back off
+    return null;
   }
 }
 

@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "אתר הרשמה ושריון מגרש למושב בצרה",
   "main": "server.js",
+  "engines": {
+    "node": ">=18.17.0"
+  },
   "scripts": {
     "start": "node server.js"
   },
