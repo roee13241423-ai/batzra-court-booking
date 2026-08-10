@@ -64,7 +64,7 @@
                           <button type="submit" class="slot mine">שלך (ביטול)</button>
                         </form>
                       <% } else { %>
-                        <span class="slot taken">תפוס</span>
+                        <span class="slot taken">תפוס<br><small><%= cell.ownerName %></small></span>
                       <% } %>
                     <% } else if (cell.isPast) { %>
                       <span class="slot past">-</span>
