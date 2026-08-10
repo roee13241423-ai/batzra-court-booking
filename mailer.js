@@ -1,35 +1,35 @@
-const nodemailer = require('nodemailer');
-
-let transporter = null;
-
-function getTransporter() {
-  if (transporter) return transporter;
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) return null;
-  transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000
-  });
-  return transporter;
-}
+// Render's free tier blocks outbound SMTP, so email is sent over Brevo's
+// HTTPS transactional email API instead of SMTP.
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
 async function sendMail({ to, subject, html }) {
-  const t = getTransporter();
-  if (!t) {
-    console.warn(`שליחת מייל דולגה (GMAIL_USER/GMAIL_APP_PASSWORD לא מוגדרים) - אל: ${to}, נושא: ${subject}`);
+  const apiKey = process.env.BREVO_API_KEY;
+  const fromEmail = process.env.MAIL_FROM_EMAIL;
+
+  if (!apiKey || !fromEmail) {
+    console.warn(`שליחת מייל דולגה (BREVO_API_KEY/MAIL_FROM_EMAIL לא מוגדרים) - אל: ${to}, נושא: ${subject}`);
     return;
   }
-  await t.sendMail({
-    from: `מגרש מושב בצרה <${process.env.GMAIL_USER}>`,
-    to,
-    subject,
-    html
+
+  const res = await fetch(BREVO_API_URL, {
+    method: 'POST',
+    headers: {
+      'api-key': apiKey,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+      sender: { email: fromEmail, name: 'מגרש מושב בצרה' },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html
+    })
   });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Brevo API error ${res.status}: ${text}`);
+  }
 }
 
 module.exports = { sendMail };

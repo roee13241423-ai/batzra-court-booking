@@ -10,7 +10,7 @@
    - `DATABASE_URL` - כתובת החיבור למסד הנתונים
    - `SESSION_SECRET` - מחרוזת סודית אקראית
    - `ADMIN_EMAIL` ו-`ADMIN_PASSWORD` - פרטי ההתחברות של המנהל הראשון (ייווצר אוטומטית בהפעלה)
-   - `GMAIL_USER` ו-`GMAIL_APP_PASSWORD` - חשבון Gmail לשליחת מיילים (קוד אימות ואישורי שריון). אם לא מוגדרים, המערכת עדיין עובדת אך לא שולחת מיילים בפועל (רק מדפיסה הודעה ביומן השרת).
+   - `BREVO_API_KEY` ו-`MAIL_FROM_EMAIL` - לשליחת מיילים (קוד אימות) דרך [Brevo](https://brevo.com). אם לא מוגדרים, המערכת עדיין עובדת אך לא שולחת מיילים בפועל (רק מדפיסה הודעה ביומן השרת) - אפשר להשתמש בכפתור "אמת מייל ידנית" בפאנל הניהול במקום.
 4. בתוך תיקיית הפרויקט להריץ:
 
 ```bash
@@ -34,7 +34,9 @@ npm start
 2. ב-[Render](https://render.com) ליצור **Web Service** חדש מחובר ל-repo:
    - Build Command: `npm install`
    - Start Command: `npm start`
-3. להגדיר את משתני הסביבה (`DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GMAIL_USER`, `GMAIL_APP_PASSWORD`) בהגדרות השירות ב-Render (Environment).
+3. להגדיר את משתני הסביבה (`DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `BREVO_API_KEY`, `MAIL_FROM_EMAIL`) בהגדרות השירות ב-Render (Environment).
+
+**חשוב**: Render חוסם תקשורת SMTP יוצאת בתוכנית החינמית, ולכן שליחת המיילים חייבת לעבור דרך API מבוסס HTTPS כמו Brevo, ולא דרך Gmail SMTP רגיל.
 
 מכיוון שהנתונים נשמרים במסד Postgres חיצוני (לא בדיסק המקומי של השירות), הם **לא נמחקים** בכל דיפלוי מחדש או הפעלה מחדש של השירות.
 
