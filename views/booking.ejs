@@ -5,10 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>שריון מגרש - מושב בצרה</title>
   <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
 </head>
 <body>
   <div class="container">
     <div class="welcome-banner">
+      <% if (weather && weather.isGoodForPlaying) { %>
+        <div class="sun-decoration" aria-hidden="true"><div class="sun-rays"></div><div class="sun-core"></div></div>
+      <% } %>
       <div class="welcome-banner-top">
         <% if (user.isAdmin) { %><a href="/admin" class="banner-link">ניהול</a><% } %>
         <form method="POST" action="/logout" style="display:inline;">
@@ -17,6 +21,17 @@
       </div>
       <h1 class="welcome-banner-title">ברוכים הבאים, <%= user.firstName %> 👋</h1>
       <p class="welcome-banner-subtitle">הזמנת מגרשים - מושב בצרה</p>
+
+      <div class="banner-info">
+        <span class="banner-info-item">📅 <%= todayLabel %></span>
+        <span class="banner-info-item">🕐 <span id="live-clock">--:--:--</span></span>
+        <% if (weather) { %>
+          <span class="banner-info-item"><%= weather.emoji %> <%= weather.tempC %>°C<% if (weather.label) { %> · <%= weather.label %><% } %></span>
+          <% if (weather.isGoodForPlaying) { %>
+            <span class="banner-info-item banner-info-highlight">☀️ יום מעולה למשחק!</span>
+          <% } %>
+        <% } %>
+      </div>
     </div>
 
     <div class="court-tabs">

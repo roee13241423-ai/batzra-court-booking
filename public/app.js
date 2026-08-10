@@ -9,4 +9,15 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.setAttribute('aria-label', showing ? 'הצג סיסמה' : 'הסתר סיסמה');
     });
   });
+
+  const clockEl = document.getElementById('live-clock');
+  if (clockEl) {
+    const pad = n => String(n).padStart(2, '0');
+    const tick = () => {
+      const now = new Date();
+      clockEl.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    };
+    tick();
+    setInterval(tick, 1000);
+  }
 });

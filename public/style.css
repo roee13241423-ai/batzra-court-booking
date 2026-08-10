@@ -15,12 +15,22 @@
 
 * { box-sizing: border-box; }
 
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 body {
   margin: 0;
   font-family: 'Segoe UI', Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
   direction: rtl;
+  animation: pageFadeIn 0.45s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body { animation: none; }
 }
 
 .container {
@@ -30,12 +40,93 @@ body {
 }
 
 .welcome-banner {
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   border-radius: 16px;
   padding: 24px;
   margin-bottom: 20px;
   color: #fff;
   box-shadow: 0 4px 14px rgba(5,150,105,0.3);
+}
+
+.banner-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.banner-info-item {
+  background: rgba(255,255,255,0.16);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.banner-info-highlight {
+  background: rgba(255,255,255,0.9);
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+.sun-decoration {
+  position: absolute;
+  top: -30px;
+  left: -30px;
+  width: 130px;
+  height: 130px;
+  pointer-events: none;
+}
+
+.sun-core {
+  position: absolute;
+  top: 30px;
+  left: 30px;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fef08a, #fbbf24);
+  box-shadow: 0 0 30px 8px rgba(251,191,36,0.55);
+  animation: sunPulse 3s ease-in-out infinite;
+}
+
+.sun-rays {
+  position: absolute;
+  inset: 0;
+  animation: sunSpin 20s linear infinite;
+}
+
+.sun-rays::before, .sun-rays::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 130px;
+  height: 4px;
+  margin-top: -2px;
+  margin-left: -65px;
+  background: repeating-linear-gradient(90deg, rgba(253,224,71,0.55) 0 8px, transparent 8px 24px);
+  border-radius: 4px;
+}
+
+.sun-rays::after {
+  transform: rotate(90deg);
+}
+
+@keyframes sunPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+@keyframes sunSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sun-core, .sun-rays { animation: none; }
 }
 
 .welcome-banner-top {
@@ -360,6 +451,10 @@ table.admin-table th { background: #f8fafc; }
   .welcome-banner { padding: 18px; }
   .welcome-banner-title { font-size: 21px; }
   .welcome-banner-subtitle { font-size: 13px; }
+  .banner-info-item { font-size: 12px; padding: 5px 10px; }
+  .sun-decoration { width: 90px; height: 90px; top: -20px; left: -20px; }
+  .sun-core { width: 50px; height: 50px; top: 20px; left: 20px; }
+  .sun-rays::before, .sun-rays::after { width: 90px; margin-left: -45px; }
 
   .court-tabs { justify-content: center; }
   .court-card { width: 130px; padding: 16px 10px; }

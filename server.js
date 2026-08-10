@@ -52,6 +52,52 @@ function isSlotPast(dateStr, hour) {
   return slotEnd <= new Date();
 }
 
+// --- weather (Open-Meteo, free, no API key) ---
+const BATZRA_LAT = 32.32;
+const BATZRA_LON = 34.94;
+const WEATHER_CACHE_MS = 15 * 60 * 1000; // 15 minutes
+const RAINY_CODES = new Set([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99]);
+let weatherCache = { data: null, fetchedAt: 0 };
+
+function describeWeatherCode(code) {
+  if (code === 0) return { emoji: '☀️', label: 'בהיר' };
+  if (code === 1 || code === 2) return { emoji: '🌤️', label: 'בהיר עם עננים בודדים' };
+  if (code === 3) return { emoji: '☁️', label: 'מעונן' };
+  if (code === 45 || code === 48) return { emoji: '🌫️', label: 'ערפילי' };
+  if (RAINY_CODES.has(code)) {
+    if (code >= 95) return { emoji: '⛈️', label: 'סופת רעמים' };
+    if (code >= 71 && code <= 77) return { emoji: '❄️', label: 'שלג' };
+    return { emoji: '🌧️', label: 'גשום' };
+  }
+  return { emoji: '🌡️', label: '' };
+}
+
+async function getWeather() {
+  const now = Date.now();
+  if (weatherCache.data && now - weatherCache.fetchedAt < WEATHER_CACHE_MS) {
+    return weatherCache.data;
+  }
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${BATZRA_LAT}&longitude=${BATZRA_LON}&current=temperature_2m,weather_code&timezone=Asia%2FJerusalem`;
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error(`מזג אוויר: תגובה לא תקינה ${res.status}`);
+    const json = await res.json();
+    const tempC = Math.round(json.current.temperature_2m);
+    const code = json.current.weather_code;
+    const { emoji, label } = describeWeatherCode(code);
+    const isGoodForPlaying = tempC >= 22 && tempC <= 34 && !RAINY_CODES.has(code);
+    const data = { tempC, emoji, label, isGoodForPlaying };
+    weatherCache = { data, fetchedAt: now };
+    return data;
+  } catch (err) {
+    console.error('שגיאה בשליפת מזג אוויר:', err.message);
+    return weatherCache.data; // may be null; view handles that
+  }
+}
+
 function generateVerificationCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
@@ -336,9 +382,12 @@ app.get('/booking', requireLogin(async (req, res) => {
     });
   }
 
-  const [allBookings, users] = await Promise.all([db.getAllBookings(), db.getAllUsers()]);
+  const [allBookings, users, weather] = await Promise.all([db.getAllBookings(), db.getAllUsers(), getWeather()]);
   const bookings = allBookings.filter(b => b.court === court);
   const usersById = new Map(users.map(u => [u.id, u]));
+
+  const today = new Date();
+  const todayLabel = `יום ${DAY_NAMES[today.getDay()]}, ${pad(today.getDate())}/${pad(today.getMonth() + 1)}/${today.getFullYear()}`;
 
   const grid = {};
   days.forEach(day => {
@@ -362,7 +411,7 @@ app.get('/booking', requireLogin(async (req, res) => {
 
   const dailyLimitReached = req.query.error === 'limit';
 
-  res.render('booking', { user: req.user, days, hours: HOURS, grid, offset, courts: COURTS, court, dailyLimitReached });
+  res.render('booking', { user: req.user, days, hours: HOURS, grid, offset, courts: COURTS, court, dailyLimitReached, weather, todayLabel });
 }));
 
 app.post('/booking/:date/:hour', requireLogin(async (req, res) => {
